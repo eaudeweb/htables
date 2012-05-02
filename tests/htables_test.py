@@ -154,5 +154,5 @@ class HtableTest(unittest.TestCase):
 
         with self.db_session() as session:
             cursor = session.conn.cursor()
-            cursor.execute("SELECT DISTINCT loid FROM pg_largeobject")
+            cursor.execute("SELECT DISTINCT oid FROM pg_largeobject_metadata")
             self.assertEqual(list(cursor), [])
