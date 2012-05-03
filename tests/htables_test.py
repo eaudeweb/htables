@@ -8,26 +8,7 @@ schema = htables.Schema()
 PersonRow = schema.define_table('PersonRow', 'person')
 
 
-class HtableTest(unittest.TestCase):
-
-    CONNECTION_URI = 'postgresql://localhost/htables_test'
-
-    def setUp(self):
-        with self.db_session() as session:
-            session.create_all()
-
-    def tearDown(self):
-        with self.db_session() as session:
-            session.drop_all()
-
-    @contextmanager
-    def db_session(self):
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
-        session = session_pool.get_session()
-        try:
-            yield session
-        finally:
-            session_pool.put_session(session)
+class _HTablesApiTest(unittest.TestCase):
 
     def test_save(self):
         with self.db_session() as session:
@@ -156,3 +137,26 @@ class HtableTest(unittest.TestCase):
             cursor = session.conn.cursor()
             cursor.execute("SELECT DISTINCT oid FROM pg_largeobject_metadata")
             self.assertEqual(list(cursor), [])
+
+
+
+class PostgresqlTest(_HTablesApiTest):
+
+    CONNECTION_URI = 'postgresql://localhost/htables_test'
+
+    def setUp(self):
+        with self.db_session() as session:
+            session.create_all()
+
+    def tearDown(self):
+        with self.db_session() as session:
+            session.drop_all()
+
+    @contextmanager
+    def db_session(self):
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        session = session_pool.get_session()
+        try:
+            yield session
+        finally:
+            session_pool.put_session(session)
