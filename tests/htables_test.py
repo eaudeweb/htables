@@ -160,3 +160,19 @@ class PostgresqlTest(_HTablesApiTest):
             yield session
         finally:
             session_pool.put_session(session)
+
+
+class SqliteTest(_HTablesApiTest):
+
+    pass
+
+
+def skip_me(self):
+    from nose import SkipTest
+    raise SkipTest
+
+for name in ['test_save', 'test_autoincrement_id', 'test_load',
+             'test_load_not_found', 'test_load_all', 'test_update',
+             'test_delete', 'test_large_file', 'test_large_file_error',
+             'test_remove_large_file']:
+    setattr(SqliteTest, name, skip_me)
