@@ -1,6 +1,7 @@
 import unittest
 from contextlib import contextmanager
 from StringIO import StringIO
+import json
 import htables
 
 
@@ -167,14 +168,26 @@ class PostgresqlTest(_HTablesApiTest):
 
 class SqliteTest(_HTablesApiTest):
 
-    pass
+    def setUp(self):
+        super(SqliteTest, self).setUp()
+        import sqlite3
+        self.conn = sqlite3.connect(':memory:')
+
+    @contextmanager
+    def db_session(self):
+        sqlite_session = htables.SqliteSession(schema, self.conn)
+        sqlite_session.create_all()
+        yield sqlite_session
+
+    def _unpack_data(self, value):
+        return json.loads(value)
 
 
 def skip_me(self):
     from nose import SkipTest
     raise SkipTest
 
-for name in ['test_save', 'test_autoincrement_id', 'test_load',
+for name in ['test_autoincrement_id', 'test_load',
              'test_load_not_found', 'test_load_all', 'test_update',
              'test_delete', 'test_large_file', 'test_large_file_error',
              'test_remove_large_file']:

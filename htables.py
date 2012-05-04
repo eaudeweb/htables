@@ -1,4 +1,5 @@
 import re
+import json
 import psycopg2.pool, psycopg2.extras
 
 
@@ -204,6 +205,20 @@ class Session(object):
         for [oid] in cursor:
             self.conn.lobject(oid, 'n').unlink()
         self._conn.commit()
+
+
+class SqliteTable(Table):
+
+    def _insert(self, obj):
+        cursor = self._session.conn.cursor()
+        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (?)",
+                       (json.dumps(obj),))
+        return cursor.lastrowid
+
+
+class SqliteSession(Session):
+
+    _table_cls = SqliteTable
 
 
 def transform_connection_uri(connection_uri):
