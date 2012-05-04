@@ -110,6 +110,11 @@ class Table(object):
                        (obj_id,))
         return list(cursor)
 
+    def _select_all(self):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT id, data FROM " + self._name)
+        return cursor
+
     def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
@@ -139,9 +144,7 @@ class Table(object):
         cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
 
     def get_all(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT id, data FROM " + self._name)
-        for ob_id, ob_data in cursor:
+        for ob_id, ob_data in self._select_all():
             ob = self._row_cls(ob_data)
             ob.id = ob_id
             yield ob
@@ -229,6 +232,11 @@ class SqliteTable(Table):
         cursor.execute("SELECT data FROM " + self._name + " WHERE id = ?",
                        (obj_id,))
         return [(json.loads(r[0]),) for r in cursor]
+
+    def _select_all(self):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT id, data FROM " + self._name)
+        return ((id, json.loads(data)) for (id, data) in cursor)
 
 
 class SqliteSession(Session):
