@@ -95,8 +95,15 @@ class Table(object):
         cursor = self._session.conn.cursor()
         cursor.execute("DROP TABLE IF EXISTS " + self._name)
 
-    def save(self, obj):
+    def _insert(self, obj):
         cursor = self._session.conn.cursor()
+        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (%s)",
+                       (obj,))
+        cursor.execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',))
+        [(last_insert_id,)] = list(cursor)
+        return last_insert_id
+
+    def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
                 assert isinstance(key, basestring), \
@@ -104,11 +111,9 @@ class Table(object):
                 assert isinstance(value, basestring), \
                     "Value %r for key %r is not a string" % (value, key)
         if obj.id is None:
-            cursor.execute("INSERT INTO " + self._name + " (data) VALUES (%s)",
-                           (obj,))
-            cursor.execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',))
-            [(obj.id,)] = list(cursor)
+            obj.id = self._insert(obj)
         else:
+            cursor = self._session.conn.cursor()
             cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
                            (obj, obj.id))
 
