@@ -115,6 +115,11 @@ class Table(object):
         cursor.execute("SELECT id, data FROM " + self._name)
         return cursor
 
+    def _update(self, obj_id, obj):
+        cursor = self._session.conn.cursor()
+        cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
+                       (obj, obj_id))
+
     def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
@@ -125,9 +130,7 @@ class Table(object):
         if obj.id is None:
             obj.id = self._insert(obj)
         else:
-            cursor = self._session.conn.cursor()
-            cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
-                           (obj, obj.id))
+            self._update(obj.id, obj)
 
     def get(self, obj_id):
         rows = self._select_by_id(obj_id)
@@ -237,6 +240,11 @@ class SqliteTable(Table):
         cursor = self._session.conn.cursor()
         cursor.execute("SELECT id, data FROM " + self._name)
         return ((id, json.loads(data)) for (id, data) in cursor)
+
+    def _update(self, obj_id, obj):
+        cursor = self._session.conn.cursor()
+        cursor.execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
+                       (json.dumps(obj), obj_id))
 
 
 class SqliteSession(Session):
