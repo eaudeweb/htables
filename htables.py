@@ -146,6 +146,7 @@ class Table(object):
 class Session(object):
 
     _debug = False
+    _table_cls = Table
 
     def __init__(self, schema, conn, debug=False):
         self._schema = schema
@@ -185,7 +186,7 @@ class Session(object):
         else:
             raise ValueError("Can't determine table type from %r" %
                              (obj_or_cls,))
-        return Table(row_cls, self)
+        return self._table_cls(row_cls, self)
 
     def save(self, obj):
         self.table(obj).save(obj)
