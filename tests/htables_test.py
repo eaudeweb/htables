@@ -172,10 +172,11 @@ class SqliteTest(_HTablesApiTest):
         super(SqliteTest, self).setUp()
         import sqlite3
         self.conn = sqlite3.connect(':memory:')
+        self.db_files = {}
 
     @contextmanager
     def db_session(self):
-        sqlite_session = htables.SqliteSession(schema, self.conn)
+        sqlite_session = htables.SqliteSession(schema, self.conn, self.db_files)
         sqlite_session.create_all()
         yield sqlite_session
 
@@ -187,6 +188,6 @@ def skip_me(self):
     from nose import SkipTest
     raise SkipTest
 
-for name in ['test_large_file', 'test_large_file_error',
+for name in ['test_large_file_error',
              'test_remove_large_file']:
     setattr(SqliteTest, name, skip_me)

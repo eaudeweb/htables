@@ -219,6 +219,20 @@ class Session(object):
         self._conn.commit()
 
 
+class SqliteDbFile(object):
+
+    def __init__(self, session, id, data):
+        self.id = id
+        self._data = data
+
+    def save_from(self, in_file):
+        self._data.seek(0)
+        self._data.write(in_file.read())
+
+    def iter_data(self):
+        return iter([self._data.getvalue()])
+
+
 class SqliteTable(Table):
 
     def _create(self):
@@ -257,6 +271,21 @@ class SqliteTable(Table):
 class SqliteSession(Session):
 
     _table_cls = SqliteTable
+
+    def __init__(self, schema, conn, db_files, debug=False):
+        super(SqliteSession, self).__init__(schema, conn, debug)
+        self._db_files = db_files
+
+    def get_db_file(self, id=None):
+        if id is None:
+            import random, string, StringIO
+            while True:
+                id = ''.join(random.choice(string.ascii_letters)
+                             for c in range(6))
+                if id not in self._db_files:
+                    break
+            self._db_files[id] = StringIO.StringIO()
+        return SqliteDbFile(self, id, self._db_files[id])
 
 
 def transform_connection_uri(connection_uri):
