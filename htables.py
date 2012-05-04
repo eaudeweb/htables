@@ -104,6 +104,12 @@ class Table(object):
         [(last_insert_id,)] = list(cursor)
         return last_insert_id
 
+    def _select_by_id(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT data FROM " + self._name + " WHERE id = %s",
+                       (obj_id,))
+        return list(cursor)
+
     def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
@@ -119,10 +125,7 @@ class Table(object):
                            (obj, obj.id))
 
     def get(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT data FROM " + self._name + " WHERE id = %s",
-                       (obj_id,))
-        rows = list(cursor)
+        rows = self._select_by_id(obj_id)
         if len(rows) == 0:
             raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
@@ -220,6 +223,12 @@ class SqliteTable(Table):
         cursor.execute("INSERT INTO " + self._name + " (data) VALUES (?)",
                        (json.dumps(obj),))
         return cursor.lastrowid
+
+    def _select_by_id(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT data FROM " + self._name + " WHERE id = ?",
+                       (obj_id,))
+        return [(json.loads(r[0]),) for r in cursor]
 
 
 class SqliteSession(Session):
