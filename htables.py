@@ -209,6 +209,12 @@ class Session(object):
 
 class SqliteTable(Table):
 
+    def _create(self):
+        cursor = self._session.conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
+                            "id INTEGER PRIMARY KEY, "
+                            "data BLOB)")
+
     def _insert(self, obj):
         cursor = self._session.conn.cursor()
         cursor.execute("INSERT INTO " + self._name + " (data) VALUES (?)",

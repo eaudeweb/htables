@@ -187,7 +187,7 @@ def skip_me(self):
     from nose import SkipTest
     raise SkipTest
 
-for name in ['test_autoincrement_id', 'test_load',
+for name in ['test_load',
              'test_load_not_found', 'test_load_all', 'test_update',
              'test_delete', 'test_large_file', 'test_large_file_error',
              'test_remove_large_file']:
