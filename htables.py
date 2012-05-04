@@ -290,6 +290,12 @@ class SqliteSession(Session):
     def del_db_file(self, id):
         del self._db_files[id]
 
+    def drop_all(self):
+        for row_cls in self._schema.tables:
+            self.table(row_cls)._drop()
+        self._conn.commit()
+        self._db_files.clear()
+
 
 def transform_connection_uri(connection_uri):
     m = re.match(r"^postgresql://"
