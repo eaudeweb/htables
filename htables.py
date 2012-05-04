@@ -287,6 +287,9 @@ class SqliteSession(Session):
             self._db_files[id] = StringIO.StringIO()
         return SqliteDbFile(self, id, self._db_files[id])
 
+    def del_db_file(self, id):
+        del self._db_files[id]
+
 
 def transform_connection_uri(connection_uri):
     m = re.match(r"^postgresql://"

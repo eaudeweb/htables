@@ -126,6 +126,11 @@ class _HTablesApiTest(unittest.TestCase):
             with self.assertRaises(psycopg2.OperationalError):
                 db_file.save_from(StringIO("bla bla"))
 
+    def _count_large_files(self, session):
+        cursor = session.conn.cursor()
+        cursor.execute("SELECT DISTINCT oid FROM pg_largeobject_metadata")
+        return len(list(cursor))
+
     def test_remove_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()
@@ -138,9 +143,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            cursor = session.conn.cursor()
-            cursor.execute("SELECT DISTINCT oid FROM pg_largeobject_metadata")
-            self.assertEqual(list(cursor), [])
+            self.assertEqual(self._count_large_files(session), 0)
 
 
 
@@ -183,11 +186,13 @@ class SqliteTest(_HTablesApiTest):
     def _unpack_data(self, value):
         return json.loads(value)
 
+    def _count_large_files(self, session):
+        return len(self.db_files)
+
 
 def skip_me(self):
     from nose import SkipTest
     raise SkipTest
 
-for name in ['test_large_file_error',
-             'test_remove_large_file']:
+for name in ['test_large_file_error']:
     setattr(SqliteTest, name, skip_me)
