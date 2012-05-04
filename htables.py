@@ -1,4 +1,5 @@
 import re
+import json
 import psycopg2.pool, psycopg2.extras
 
 
@@ -95,8 +96,35 @@ class Table(object):
         cursor = self._session.conn.cursor()
         cursor.execute("DROP TABLE IF EXISTS " + self._name)
 
-    def save(self, obj):
+    def _insert(self, obj):
         cursor = self._session.conn.cursor()
+        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (%s)",
+                       (obj,))
+        cursor.execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',))
+        [(last_insert_id,)] = list(cursor)
+        return last_insert_id
+
+    def _select_by_id(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT data FROM " + self._name + " WHERE id = %s",
+                       (obj_id,))
+        return list(cursor)
+
+    def _select_all(self):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT id, data FROM " + self._name)
+        return cursor
+
+    def _update(self, obj_id, obj):
+        cursor = self._session.conn.cursor()
+        cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
+                       (obj, obj_id))
+
+    def _delete(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
+
+    def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
                 assert isinstance(key, basestring), \
@@ -104,19 +132,12 @@ class Table(object):
                 assert isinstance(value, basestring), \
                     "Value %r for key %r is not a string" % (value, key)
         if obj.id is None:
-            cursor.execute("INSERT INTO " + self._name + " (data) VALUES (%s)",
-                           (obj,))
-            cursor.execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',))
-            [(obj.id,)] = list(cursor)
+            obj.id = self._insert(obj)
         else:
-            cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
-                           (obj, obj.id))
+            self._update(obj.id, obj)
 
     def get(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT data FROM " + self._name + " WHERE id = %s",
-                       (obj_id,))
-        rows = list(cursor)
+        rows = self._select_by_id(obj_id)
         if len(rows) == 0:
             raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
@@ -126,13 +147,10 @@ class Table(object):
 
     def delete(self, obj_id):
         assert isinstance(obj_id, int)
-        cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
+        self._delete(obj_id)
 
     def get_all(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT id, data FROM " + self._name)
-        for ob_id, ob_data in cursor:
+        for ob_id, ob_data in self._select_all():
             ob = self._row_cls(ob_data)
             ob.id = ob_id
             yield ob
@@ -141,6 +159,7 @@ class Table(object):
 class Session(object):
 
     _debug = False
+    _table_cls = Table
 
     def __init__(self, schema, conn, debug=False):
         self._schema = schema
@@ -180,7 +199,7 @@ class Session(object):
         else:
             raise ValueError("Can't determine table type from %r" %
                              (obj_or_cls,))
-        return Table(row_cls, self)
+        return self._table_cls(row_cls, self)
 
     def save(self, obj):
         self.table(obj).save(obj)
@@ -198,6 +217,84 @@ class Session(object):
         for [oid] in cursor:
             self.conn.lobject(oid, 'n').unlink()
         self._conn.commit()
+
+
+class SqliteDbFile(object):
+
+    def __init__(self, session, id, data):
+        self.id = id
+        self._data = data
+
+    def save_from(self, in_file):
+        self._data.seek(0)
+        self._data.write(in_file.read())
+
+    def iter_data(self):
+        return iter([self._data.getvalue()])
+
+
+class SqliteTable(Table):
+
+    def _create(self):
+        cursor = self._session.conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
+                            "id INTEGER PRIMARY KEY, "
+                            "data BLOB)")
+
+    def _insert(self, obj):
+        cursor = self._session.conn.cursor()
+        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (?)",
+                       (json.dumps(obj),))
+        return cursor.lastrowid
+
+    def _select_by_id(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT data FROM " + self._name + " WHERE id = ?",
+                       (obj_id,))
+        return [(json.loads(r[0]),) for r in cursor]
+
+    def _select_all(self):
+        cursor = self._session.conn.cursor()
+        cursor.execute("SELECT id, data FROM " + self._name)
+        return ((id, json.loads(data)) for (id, data) in cursor)
+
+    def _update(self, obj_id, obj):
+        cursor = self._session.conn.cursor()
+        cursor.execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
+                       (json.dumps(obj), obj_id))
+
+    def _delete(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?", (obj_id,))
+
+
+class SqliteSession(Session):
+
+    _table_cls = SqliteTable
+
+    def __init__(self, schema, conn, db_files, debug=False):
+        super(SqliteSession, self).__init__(schema, conn, debug)
+        self._db_files = db_files
+
+    def get_db_file(self, id=None):
+        if id is None:
+            import random, string, StringIO
+            while True:
+                id = ''.join(random.choice(string.ascii_letters)
+                             for c in range(6))
+                if id not in self._db_files:
+                    break
+            self._db_files[id] = StringIO.StringIO()
+        return SqliteDbFile(self, id, self._db_files[id])
+
+    def del_db_file(self, id):
+        del self._db_files[id]
+
+    def drop_all(self):
+        for row_cls in self._schema.tables:
+            self.table(row_cls)._drop()
+        self._conn.commit()
+        self._db_files.clear()
 
 
 def transform_connection_uri(connection_uri):

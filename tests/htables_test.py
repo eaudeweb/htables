@@ -1,6 +1,7 @@
 import unittest
 from contextlib import contextmanager
 from StringIO import StringIO
+import json
 import htables
 
 
@@ -8,26 +9,10 @@ schema = htables.Schema()
 PersonRow = schema.define_table('PersonRow', 'person')
 
 
-class HtableTest(unittest.TestCase):
+class _HTablesApiTest(unittest.TestCase):
 
-    CONNECTION_URI = 'postgresql://localhost/htables_test'
-
-    def setUp(self):
-        with self.db_session() as session:
-            session.create_all()
-
-    def tearDown(self):
-        with self.db_session() as session:
-            session.drop_all()
-
-    @contextmanager
-    def db_session(self):
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
-        session = session_pool.get_session()
-        try:
-            yield session
-        finally:
-            session_pool.put_session(session)
+    def _unpack_data(self, value):
+        return value
 
     def test_save(self):
         with self.db_session() as session:
@@ -38,7 +23,7 @@ class HtableTest(unittest.TestCase):
             cursor = session.conn.cursor()
             cursor.execute("SELECT * FROM person")
             [row] = list(cursor)
-            self.assertEqual(row[1], {u"hello": u"world"})
+            self.assertEqual(self._unpack_data(row[1]), {u"hello": u"world"})
 
     def test_autoincrement_id(self):
         with self.db_session() as session:
@@ -141,6 +126,11 @@ class HtableTest(unittest.TestCase):
             with self.assertRaises(psycopg2.OperationalError):
                 db_file.save_from(StringIO("bla bla"))
 
+    def _count_large_files(self, session):
+        cursor = session.conn.cursor()
+        cursor.execute("SELECT DISTINCT oid FROM pg_largeobject_metadata")
+        return len(list(cursor))
+
     def test_remove_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()
@@ -153,6 +143,52 @@ class HtableTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            cursor = session.conn.cursor()
-            cursor.execute("SELECT DISTINCT oid FROM pg_largeobject_metadata")
-            self.assertEqual(list(cursor), [])
+            self.assertEqual(self._count_large_files(session), 0)
+
+
+
+class PostgresqlTest(_HTablesApiTest):
+
+    CONNECTION_URI = 'postgresql://localhost/htables_test'
+
+    def setUp(self):
+        with self.db_session() as session:
+            session.create_all()
+
+    def tearDown(self):
+        with self.db_session() as session:
+            session.drop_all()
+
+    @contextmanager
+    def db_session(self):
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        session = session_pool.get_session()
+        try:
+            yield session
+        finally:
+            session_pool.put_session(session)
+
+
+class SqliteTest(_HTablesApiTest):
+
+    def setUp(self):
+        super(SqliteTest, self).setUp()
+        import sqlite3
+        self.conn = sqlite3.connect(':memory:')
+        self.db_files = {}
+
+    @contextmanager
+    def db_session(self):
+        sqlite_session = htables.SqliteSession(schema, self.conn, self.db_files)
+        sqlite_session.create_all()
+        yield sqlite_session
+
+    def _unpack_data(self, value):
+        return json.loads(value)
+
+    def _count_large_files(self, session):
+        return len(self.db_files)
+
+    def test_large_file_error(self):
+        from nose import SkipTest
+        raise SkipTest
