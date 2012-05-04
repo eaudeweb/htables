@@ -189,10 +189,6 @@ class SqliteTest(_HTablesApiTest):
     def _count_large_files(self, session):
         return len(self.db_files)
 
-
-def skip_me(self):
-    from nose import SkipTest
-    raise SkipTest
-
-for name in ['test_large_file_error']:
-    setattr(SqliteTest, name, skip_me)
+    def test_large_file_error(self):
+        from nose import SkipTest
+        raise SkipTest
