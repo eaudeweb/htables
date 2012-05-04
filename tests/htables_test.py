@@ -187,6 +187,6 @@ def skip_me(self):
     from nose import SkipTest
     raise SkipTest
 
-for name in ['test_delete', 'test_large_file', 'test_large_file_error',
+for name in ['test_large_file', 'test_large_file_error',
              'test_remove_large_file']:
     setattr(SqliteTest, name, skip_me)

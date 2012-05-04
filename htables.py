@@ -120,6 +120,10 @@ class Table(object):
         cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
                        (obj, obj_id))
 
+    def _delete(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
+
     def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
@@ -143,8 +147,7 @@ class Table(object):
 
     def delete(self, obj_id):
         assert isinstance(obj_id, int)
-        cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
+        self._delete(obj_id)
 
     def get_all(self):
         for ob_id, ob_data in self._select_all():
@@ -245,6 +248,10 @@ class SqliteTable(Table):
         cursor = self._session.conn.cursor()
         cursor.execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
                        (json.dumps(obj), obj_id))
+
+    def _delete(self, obj_id):
+        cursor = self._session.conn.cursor()
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?", (obj_id,))
 
 
 class SqliteSession(Session):
