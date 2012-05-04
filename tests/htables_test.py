@@ -10,6 +10,9 @@ PersonRow = schema.define_table('PersonRow', 'person')
 
 class _HTablesApiTest(unittest.TestCase):
 
+    def _unpack_data(self, value):
+        return value
+
     def test_save(self):
         with self.db_session() as session:
             session.save(PersonRow(hello="world"))
@@ -19,7 +22,7 @@ class _HTablesApiTest(unittest.TestCase):
             cursor = session.conn.cursor()
             cursor.execute("SELECT * FROM person")
             [row] = list(cursor)
-            self.assertEqual(row[1], {u"hello": u"world"})
+            self.assertEqual(self._unpack_data(row[1]), {u"hello": u"world"})
 
     def test_autoincrement_id(self):
         with self.db_session() as session:
