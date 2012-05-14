@@ -280,8 +280,7 @@ class SqliteSession(Session):
         if id is None:
             import random, string, StringIO
             while True:
-                id = ''.join(random.choice(string.ascii_letters)
-                             for c in range(6))
+                id = random.randint(1, 10**6)
                 if id not in self._db_files:
                     break
             self._db_files[id] = StringIO.StringIO()
