@@ -73,7 +73,7 @@ class SessionPool(object):
 class Schema(object):
 
     def __init__(self):
-        self.tables = []
+        self._by_name = {}
 
     def define_table(self, cls_name, table_name):
         # TODO make sure table_name is safe
@@ -82,8 +82,14 @@ class Schema(object):
             _table = table_name
         cls.__name__ = cls_name
 
-        self.tables.append(cls)
+        self._by_name[table_name] = cls
         return cls
+
+    def __getitem__(self, name):
+        return self._by_name[name]
+
+    def __iter__(self):
+        return iter(self._by_name)
 
     def bind(self, connection_uri, debug=False):
         return SessionPool(self, connection_uri, debug)
@@ -259,11 +265,7 @@ class Session(object):
         return self._table_for_cls(obj_or_cls)
 
     def __getitem__(self, name):
-        for table_cls in self._schema.tables:
-            if table_cls._table == name:
-                return self._table_for_cls(table_cls)
-        else:
-            raise KeyError
+        return self._table_for_cls(self._schema[name])
 
     def save(self, obj, _deprecation_warning=True):
         if _deprecation_warning:
@@ -272,13 +274,13 @@ class Session(object):
         self._table_for_cls(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
-        for row_cls in self._schema.tables:
-            self._table_for_cls(row_cls)._create()
+        for name in self._schema:
+            self[name]._create()
         self._conn.commit()
 
     def drop_all(self):
-        for row_cls in self._schema.tables:
-            self._table_for_cls(row_cls)._drop()
+        for name in self._schema:
+            self[name]._drop()
         cursor = self.conn.cursor()
         cursor.execute("SELECT oid FROM pg_largeobject_metadata")
         for [oid] in cursor:
@@ -357,8 +359,8 @@ class SqliteSession(Session):
         del self._db_files[id]
 
     def drop_all(self):
-        for row_cls in self._schema.tables:
-            self._table_for_cls(row_cls)._drop()
+        for name in self._schema:
+            self[name]._drop()
         self._conn.commit()
         self._db_files.clear()
 
