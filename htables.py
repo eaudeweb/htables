@@ -213,6 +213,9 @@ class Table(object):
         return row
 
 
+_expired = object()
+
+
 class Session(object):
 
     _debug = False
@@ -224,13 +227,13 @@ class Session(object):
 
     @property
     def conn(self):
-        if self._conn is None:
+        if self._conn is _expired:
             raise ValueError("Error: trying to use expired database session")
         return self._conn
 
     def _release_conn(self):
         conn = self._conn
-        self._conn = None
+        self._conn = _expired
         return conn
 
     def get_db_file(self, id=None):
