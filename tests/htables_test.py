@@ -268,16 +268,21 @@ class _HTablesApiTest(unittest.TestCase):
         with self.db_session() as session:
             self.assertRaises(KeyError, lambda: session['no-such-table'])
 
+    @contextmanager
+    def expect_one_warning(self):
+        with warnings.catch_warnings(record=True) as warn_log:
+            warnings.simplefilter('always')
+            yield
+            self.assertEqual(len(warn_log), 1)
+            [warn] = warn_log
+            self.assertTrue(issubclass(warn.category, DeprecationWarning))
+            self.assertIn("deprecated", str(warn.message))
+
     def test_deprecation_table_save(self):
         with self.db_session() as session:
-            with warnings.catch_warnings(record=True) as warn_log:
-                warnings.simplefilter('always')
+            with self.expect_one_warning():
                 table = session['person']
                 table.save(table.new())
-                self.assertEqual(len(warn_log), 1)
-                [warn] = warn_log
-                assert issubclass(warn.category, DeprecationWarning)
-                assert "deprecated" in str(warn.message)
 
 
 class PostgresqlTest(_HTablesApiTest):
