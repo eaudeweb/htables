@@ -103,6 +103,17 @@ class _HTablesApiTest(unittest.TestCase):
             person = session.table(PersonRow).get(1)
             self.assertEqual(person, {'hello': "George"})
 
+    def test_table_row_factory(self):
+        with self.db_session() as session:
+            row = session['person'].new()
+            row['hello'] = 'world'
+            row.save()
+            session.commit()
+
+        with self.db_session() as session:
+            person = session.table(PersonRow).get(1)
+            self.assertEqual(person, {'hello': 'world'})
+
     def test_delete(self):
         with self.db_session() as session:
             session.save(PersonRow(hello="world"))

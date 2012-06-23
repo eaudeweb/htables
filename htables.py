@@ -130,6 +130,11 @@ class Table(object):
         cursor = self._session.conn.cursor()
         cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
 
+    def new(self):
+        ob = self._row_cls()
+        ob._table = self
+        return ob
+
     def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
