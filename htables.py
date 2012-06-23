@@ -73,7 +73,7 @@ class SessionPool(object):
 class Schema(object):
 
     def __init__(self):
-        self.tables = []
+        self._by_name = {}
 
     def define_table(self, cls_name, table_name):
         # TODO make sure table_name is safe
@@ -82,8 +82,14 @@ class Schema(object):
             _table = table_name
         cls.__name__ = cls_name
 
-        self.tables.append(cls)
+        self._by_name[table_name] = cls
         return cls
+
+    def __getitem__(self, name):
+        return self._by_name[name]
+
+    def __iter__(self):
+        return iter(self._by_name)
 
     def bind(self, connection_uri, debug=False):
         return SessionPool(self, connection_uri, debug)
@@ -242,7 +248,7 @@ class Session(object):
         # TODO needs a unit test
         self.conn.rollback()
 
-    def table(self, obj_or_cls):
+    def _table_for_cls(self, obj_or_cls):
         if isinstance(obj_or_cls, TableRow):
             row_cls = type(obj_or_cls)
         elif issubclass(obj_or_cls, TableRow):
@@ -252,27 +258,33 @@ class Session(object):
                              (obj_or_cls,))
         return self._table_cls(row_cls, self)
 
+    def table(self, obj_or_cls):
+        msg = ("Session.table(RowCls) is deprecated; use "
+               "session['table_name'] instead.")
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        return self._table_for_cls(obj_or_cls)
+
+    def _tables(self):
+        for name in self._schema:
+            yield self[name]
+
     def __getitem__(self, name):
-        for table_cls in self._schema.tables:
-            if table_cls._table == name:
-                return self.table(table_cls)
-        else:
-            raise KeyError
+        return self._table_for_cls(self._schema[name])
 
     def save(self, obj, _deprecation_warning=True):
         if _deprecation_warning:
             msg = "Session.save(row) is deprecated; use row.save() instead."
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
-        self.table(obj).save(obj, _deprecation_warning=False)
+        self._table_for_cls(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
-        for row_cls in self._schema.tables:
-            self.table(row_cls)._create()
+        for table in self._tables():
+            table._create()
         self._conn.commit()
 
     def drop_all(self):
-        for row_cls in self._schema.tables:
-            self.table(row_cls)._drop()
+        for table in self._tables():
+            table._drop()
         cursor = self.conn.cursor()
         cursor.execute("SELECT oid FROM pg_largeobject_metadata")
         for [oid] in cursor:
@@ -351,8 +363,8 @@ class SqliteSession(Session):
         del self._db_files[id]
 
     def drop_all(self):
-        for row_cls in self._schema.tables:
-            self.table(row_cls)._drop()
+        for table in self._tables():
+            table._drop()
         self._conn.commit()
         self._db_files.clear()
 
