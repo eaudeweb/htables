@@ -114,6 +114,15 @@ class _HTablesApiTest(unittest.TestCase):
             person = session.table(PersonRow).get(1)
             self.assertEqual(person, {'hello': 'world'})
 
+    def test_table_row_factory_with_dict_args(self):
+        with self.db_session() as session:
+            session['person'].new({'hello': 'world'}, a='b').save()
+            session.commit()
+
+        with self.db_session() as session:
+            person = session.table(PersonRow).get(1)
+            self.assertEqual(person, {'hello': 'world', 'a': 'b'})
+
     def test_delete(self):
         with self.db_session() as session:
             session.save(PersonRow(hello="world"))

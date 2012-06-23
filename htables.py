@@ -136,8 +136,8 @@ class Table(object):
         ob._table = self
         return ob
 
-    def new(self):
-        return self._row()
+    def new(self, *args, **kwargs):
+        return self._row(data=dict(*args, **kwargs))
 
     def save(self, obj):
         if self._session._debug:
