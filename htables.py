@@ -1,5 +1,6 @@
 import re
 import json
+import warnings
 import psycopg2.pool, psycopg2.extras
 
 
@@ -24,7 +25,7 @@ class TableRow(dict):
         self._table.delete(self.id)
 
     def save(self):
-        self._table.save(self)
+        self._table.save(self, _deprecation_warning=False)
 
 
 class DbFile(object):
@@ -139,7 +140,10 @@ class Table(object):
     def new(self, *args, **kwargs):
         return self._row(data=dict(*args, **kwargs))
 
-    def save(self, obj):
+    def save(self, obj, _deprecation_warning=True):
+        if _deprecation_warning:
+            msg = "Table.save(row) is deprecated; use row.save() instead."
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
         if self._session._debug:
             for key, value in obj.iteritems():
                 assert isinstance(key, basestring), \
@@ -248,7 +252,7 @@ class Session(object):
             raise KeyError
 
     def save(self, obj):
-        self.table(obj).save(obj)
+        self.table(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
         for row_cls in self._schema.tables:

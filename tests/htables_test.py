@@ -2,6 +2,7 @@ import unittest
 from contextlib import contextmanager
 from StringIO import StringIO
 import json
+import warnings
 import htables
 
 
@@ -267,6 +268,16 @@ class _HTablesApiTest(unittest.TestCase):
         with self.db_session() as session:
             self.assertRaises(KeyError, lambda: session['no-such-table'])
 
+    def test_deprecation_table_save(self):
+        with self.db_session() as session:
+            with warnings.catch_warnings(record=True) as warn_log:
+                warnings.simplefilter('always')
+                table = session['person']
+                table.save(table.new())
+                self.assertEqual(len(warn_log), 1)
+                [warn] = warn_log
+                assert issubclass(warn.category, DeprecationWarning)
+                assert "deprecated" in str(warn.message)
 
 
 class PostgresqlTest(_HTablesApiTest):
