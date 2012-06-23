@@ -1,5 +1,8 @@
 import re
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 import warnings
 import psycopg2.pool, psycopg2.extras
 

@@ -1,12 +1,13 @@
+from __future__ import with_statement
 import unittest2 as unittest
 from contextlib import contextmanager
 from StringIO import StringIO
-import json
 import warnings
 
 
 def setUpModule(self):
     import htables; self.htables = htables
+    self.json = htables.json
     self.schema = htables.Schema()
     self.PersonRow = self.schema.define_table('PersonRow', 'person')
 
@@ -272,6 +273,9 @@ class _HTablesApiTest(unittest.TestCase):
 
     @contextmanager
     def expect_one_warning(self):
+        if not hasattr(warnings, 'catch_warnings'): # python < 2.6
+            from nose import SkipTest
+            raise SkipTest
         with warnings.catch_warnings(record=True) as warn_log:
             warnings.simplefilter('always')
             yield
