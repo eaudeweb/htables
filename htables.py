@@ -166,8 +166,10 @@ class Table(object):
         for ob_id, ob_data in self._select_all():
             yield self._row(ob_id, ob_data)
 
-    def find(self):
-        return self.get_all()
+    def find(self, **kwargs):
+        for row in self.get_all():
+            if all(row[k] == kwargs[k] for k in kwargs):
+                yield row
 
 
 class Session(object):
