@@ -171,6 +171,10 @@ class Table(object):
             if all(row[k] == kwargs[k] for k in kwargs):
                 yield row
 
+    def find_first(self, **kwargs):
+        for row in self.find(**kwargs):
+            return row
+
 
 class Session(object):
 
