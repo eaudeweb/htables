@@ -156,6 +156,15 @@ class _HTablesApiTest(unittest.TestCase):
         with self.db_session() as session:
             self.assertEqual(list(session['person'].find()), [])
 
+    def test_find_all_rows(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one').save()
+            table.new(name='two').save()
+            row1 = table.get(1)
+            row2 = table.get(2)
+            self.assertEqual(list(table.find()), [row1, row2])
+
     def test_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()

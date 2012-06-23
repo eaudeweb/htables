@@ -167,7 +167,7 @@ class Table(object):
             yield self._row(ob_id, ob_data)
 
     def find(self):
-        return []
+        return self.get_all()
 
 
 class Session(object):
