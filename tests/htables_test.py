@@ -206,6 +206,11 @@ class _HTablesApiTest(unittest.TestCase):
             row2 = table.get(2)
             self.assertRaises(ValueError, table.find_single, color='red')
 
+    def test_find_single_with_no_results(self):
+        with self.db_session() as session:
+            table = session['person']
+            self.assertRaises(KeyError, table.find_single, color='red')
+
     def test_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()

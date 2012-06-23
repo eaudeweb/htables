@@ -179,13 +179,19 @@ class Table(object):
 
     def find_single(self, **kwargs):
         results = iter(self.find(**kwargs))
-        row = results.next()
+
+        try:
+            row = results.next()
+        except StopIteration:
+            raise KeyError
+
         try:
             results.next()
         except StopIteration:
             pass
         else:
             raise ValueError("More than one row found")
+
         return row
 
 
