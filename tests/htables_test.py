@@ -102,6 +102,21 @@ class _HTablesApiTest(unittest.TestCase):
             cursor.execute("SELECT * FROM person")
             self.assertEqual(list(cursor), [])
 
+    def test_delete_from_row(self):
+        with self.db_session() as session:
+            session.save(PersonRow(hello="world"))
+            session.commit()
+
+        with self.db_session() as session:
+            row = session['person'].get(1)
+            row.delete()
+            session.commit()
+
+        with self.db_session() as session:
+            cursor = session.conn.cursor()
+            cursor.execute("SELECT * FROM person")
+            self.assertEqual(list(cursor), [])
+
     def test_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()

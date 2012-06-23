@@ -20,6 +20,9 @@ class TableRow(dict):
 
     id = None
 
+    def delete(self):
+        self._table.delete(self.id)
+
 
 class DbFile(object):
 
@@ -142,6 +145,7 @@ class Table(object):
             raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
         obj = self._row_cls(data)
+        obj._table = self
         obj.id = obj_id
         return obj
 
@@ -152,6 +156,7 @@ class Table(object):
     def get_all(self):
         for ob_id, ob_data in self._select_all():
             ob = self._row_cls(ob_data)
+            ob._table = self
             ob.id = ob_id
             yield ob
 
