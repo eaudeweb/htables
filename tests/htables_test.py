@@ -64,7 +64,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            all_persons = list(session.table(PersonRow).get_all())
+            all_persons = list(session.table(PersonRow).find())
             self.assertEqual(len(all_persons), 2)
             self.assertEqual(all_persons[0], {'hello': "world"})
             self.assertEqual(all_persons[0].id, 1)
@@ -289,6 +289,11 @@ class _HTablesApiTest(unittest.TestCase):
             with self.expect_one_warning():
                 table = session['person']
                 session.save(table.new())
+
+    def test_deprecation_table_get_all(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                session['person'].get_all()
 
 
 class PostgresqlTest(_HTablesApiTest):

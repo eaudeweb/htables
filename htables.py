@@ -166,12 +166,15 @@ class Table(object):
         assert isinstance(obj_id, int)
         self._delete(obj_id)
 
-    def get_all(self):
-        for ob_id, ob_data in self._select_all():
-            yield self._row(ob_id, ob_data)
+    def get_all(self, _deprecation_warning=True):
+        if _deprecation_warning:
+            msg = "Table.get_all() is deprecated; use Table.find() instead."
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        return self.find()
 
     def find(self, **kwargs):
-        for row in self.get_all():
+        for ob_id, ob_data in self._select_all():
+            row = self._row(ob_id, ob_data)
             if all(row[k] == kwargs[k] for k in kwargs):
                 yield row
 
