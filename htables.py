@@ -1,5 +1,8 @@
 import re
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 import warnings
 import psycopg2.pool, psycopg2.extras
 
@@ -22,10 +25,10 @@ class TableRow(dict):
     id = None
 
     def delete(self):
-        self._table.delete(self.id)
+        self._parent_table.delete(self.id)
 
     def save(self):
-        self._table.save(self, _deprecation_warning=False)
+        self._parent_table.save(self, _deprecation_warning=False)
 
 
 class DbFile(object):
@@ -134,11 +137,13 @@ class Table(object):
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
         ob.id = id
-        ob._table = self
+        ob._parent_table = self
         return ob
 
     def new(self, *args, **kwargs):
-        return self._row(data=dict(*args, **kwargs))
+        row = self._row(data=dict(*args, **kwargs))
+        row.save()
+        return row
 
     def save(self, obj, _deprecation_warning=True):
         if _deprecation_warning:

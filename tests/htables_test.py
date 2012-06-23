@@ -1,13 +1,15 @@
-import unittest
+from __future__ import with_statement
+import unittest2 as unittest
 from contextlib import contextmanager
 from StringIO import StringIO
-import json
 import warnings
-import htables
 
 
-schema = htables.Schema()
-PersonRow = schema.define_table('PersonRow', 'person')
+def setUpModule(self):
+    import htables; self.htables = htables
+    self.json = htables.json
+    self.schema = htables.Schema()
+    self.PersonRow = self.schema.define_table('PersonRow', 'person')
 
 
 class _HTablesApiTest(unittest.TestCase):
@@ -107,6 +109,7 @@ class _HTablesApiTest(unittest.TestCase):
     def test_table_row_factory(self):
         with self.db_session() as session:
             row = session['person'].new()
+            self.assertEqual(row.id, 1)
             row['hello'] = 'world'
             row.save()
             session.commit()
@@ -270,6 +273,9 @@ class _HTablesApiTest(unittest.TestCase):
 
     @contextmanager
     def expect_one_warning(self):
+        if not hasattr(warnings, 'catch_warnings'): # python < 2.6
+            from nose import SkipTest
+            raise SkipTest
         with warnings.catch_warnings(record=True) as warn_log:
             warnings.simplefilter('always')
             yield

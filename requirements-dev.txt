@@ -1,0 +1,5 @@
+psycopg2==2.4.5
+nose==1.1.2
+mock==0.8.0
+unittest2==0.5.1
+simplejson==2.5.2
