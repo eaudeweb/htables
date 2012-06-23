@@ -50,13 +50,13 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            person = session.table(PersonRow).get(1)
+            person = session['person'].get(1)
             self.assertEqual(person, {"hello": "world"})
 
     def test_load_not_found(self):
         with self.db_session() as session:
             with self.assertRaises(KeyError) as e:
-                session.table(PersonRow).get(13)
+                session['person'].get(13)
 
     def test_load_all(self):
         with self.db_session() as session:
@@ -65,7 +65,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            all_persons = list(session.table(PersonRow).find())
+            all_persons = list(session['person'].find())
             self.assertEqual(len(all_persons), 2)
             self.assertEqual(all_persons[0], {'hello': "world"})
             self.assertEqual(all_persons[0].id, 1)
@@ -78,7 +78,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            person = session.table(PersonRow).get(1)
+            person = session['person'].get(1)
             del person["k1"] # remove value
             person["k2"] = "vX" # change value
             # person["k3"] unchanged
@@ -87,7 +87,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            person = session.table(PersonRow).get(1)
+            person = session['person'].get(1)
             self.assertEqual(person, {"k2": "vX", "k3": "v3", "k4": "v4"})
 
     def test_save_from_row(self):
@@ -96,13 +96,13 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            person = session.table(PersonRow).get(1)
+            person = session['person'].get(1)
             person['hello'] = "George"
             person.save()
             session.commit()
 
         with self.db_session() as session:
-            person = session.table(PersonRow).get(1)
+            person = session['person'].get(1)
             self.assertEqual(person, {'hello': "George"})
 
     def test_table_row_factory(self):
@@ -114,7 +114,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            person = session.table(PersonRow).get(1)
+            person = session['person'].get(1)
             self.assertEqual(person, {'hello': 'world'})
 
     def test_table_row_factory_with_dict_args(self):
@@ -123,7 +123,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            person = session.table(PersonRow).get(1)
+            person = session['person'].get(1)
             self.assertEqual(person, {'hello': 'world', 'a': 'b'})
 
     def test_delete(self):
@@ -132,7 +132,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            session.table(PersonRow).delete(1)
+            session['person'].delete(1)
             session.commit()
 
         with self.db_session() as session:
