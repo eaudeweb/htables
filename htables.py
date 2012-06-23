@@ -174,6 +174,8 @@ class Table(object):
     def find_first(self, **kwargs):
         for row in self.find(**kwargs):
             return row
+        else:
+            raise KeyError
 
 
 class Session(object):
