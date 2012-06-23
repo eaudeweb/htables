@@ -138,7 +138,9 @@ class Table(object):
         return ob
 
     def new(self, *args, **kwargs):
-        return self._row(data=dict(*args, **kwargs))
+        row = self._row(data=dict(*args, **kwargs))
+        row.save()
+        return row
 
     def save(self, obj, _deprecation_warning=True):
         if _deprecation_warning:

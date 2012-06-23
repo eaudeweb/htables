@@ -108,6 +108,7 @@ class _HTablesApiTest(unittest.TestCase):
     def test_table_row_factory(self):
         with self.db_session() as session:
             row = session['person'].new()
+            self.assertEqual(row.id, 1)
             row['hello'] = 'world'
             row.save()
             session.commit()
