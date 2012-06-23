@@ -201,6 +201,13 @@ class Session(object):
                              (obj_or_cls,))
         return self._table_cls(row_cls, self)
 
+    def __getitem__(self, name):
+        for table_cls in self._schema.tables:
+            if table_cls._table == name:
+                return self.table(table_cls)
+        else:
+            raise KeyError
+
     def save(self, obj):
         self.table(obj).save(obj)
 

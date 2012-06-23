@@ -145,6 +145,19 @@ class _HTablesApiTest(unittest.TestCase):
         with self.db_session() as session:
             self.assertEqual(self._count_large_files(session), 0)
 
+    def test_table_access(self):
+        with self.db_session() as session:
+            session.save(PersonRow(hello="world"))
+            session.commit()
+
+        with self.db_session() as session:
+            table = session['person']
+            self.assertEqual(table.get(1), {'hello': 'world'})
+
+    def test_table_access_bad_name(self):
+        with self.db_session() as session:
+            self.assertRaises(KeyError, lambda: session['no-such-table'])
+
 
 
 class PostgresqlTest(_HTablesApiTest):
