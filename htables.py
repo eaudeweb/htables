@@ -242,7 +242,7 @@ class Session(object):
         # TODO needs a unit test
         self.conn.rollback()
 
-    def table(self, obj_or_cls):
+    def _table_for_cls(self, obj_or_cls):
         if isinstance(obj_or_cls, TableRow):
             row_cls = type(obj_or_cls)
         elif issubclass(obj_or_cls, TableRow):
@@ -252,10 +252,16 @@ class Session(object):
                              (obj_or_cls,))
         return self._table_cls(row_cls, self)
 
+    def table(self, obj_or_cls):
+        msg = ("Session.table(RowCls) is deprecated; use "
+               "session['table_name'] instead.")
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        return self._table_for_cls(obj_or_cls)
+
     def __getitem__(self, name):
         for table_cls in self._schema.tables:
             if table_cls._table == name:
-                return self.table(table_cls)
+                return self._table_for_cls(table_cls)
         else:
             raise KeyError
 
@@ -263,16 +269,16 @@ class Session(object):
         if _deprecation_warning:
             msg = "Session.save(row) is deprecated; use row.save() instead."
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
-        self.table(obj).save(obj, _deprecation_warning=False)
+        self._table_for_cls(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
         for row_cls in self._schema.tables:
-            self.table(row_cls)._create()
+            self._table_for_cls(row_cls)._create()
         self._conn.commit()
 
     def drop_all(self):
         for row_cls in self._schema.tables:
-            self.table(row_cls)._drop()
+            self._table_for_cls(row_cls)._drop()
         cursor = self.conn.cursor()
         cursor.execute("SELECT oid FROM pg_largeobject_metadata")
         for [oid] in cursor:
@@ -352,7 +358,7 @@ class SqliteSession(Session):
 
     def drop_all(self):
         for row_cls in self._schema.tables:
-            self.table(row_cls)._drop()
+            self._table_for_cls(row_cls)._drop()
         self._conn.commit()
         self._db_files.clear()
 

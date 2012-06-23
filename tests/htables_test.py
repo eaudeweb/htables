@@ -300,6 +300,11 @@ class _HTablesApiTest(unittest.TestCase):
             with self.expect_one_warning():
                 session['person'].get_all()
 
+    def test_deprecation_session_table(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                session.table(PersonRow)
+
 
 class PostgresqlTest(_HTablesApiTest):
 
