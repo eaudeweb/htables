@@ -1,4 +1,4 @@
-import unittest
+import unittest2 as unittest
 from contextlib import contextmanager
 from StringIO import StringIO
 import json
