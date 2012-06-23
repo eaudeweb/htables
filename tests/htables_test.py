@@ -327,8 +327,15 @@ class PostgresqlTest(_HTablesApiTest):
         finally:
             session_pool.put_session(session)
 
+class PostgresqlSessionTest(unittest.TestCase):
+
+    CONNECTION_URI = PostgresqlTest.CONNECTION_URI
+
+    def _get_session_pool(self):
+        return schema.bind(self.CONNECTION_URI, debug=True)
+
     def test_use_expired_connection(self):
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        session_pool = self._get_session_pool()
         session = session_pool.get_session()
         session_pool.put_session(session)
         self.assertRaises(ValueError, session.commit)
