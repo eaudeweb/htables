@@ -2,6 +2,7 @@ import unittest
 from contextlib import contextmanager
 from StringIO import StringIO
 import json
+import warnings
 import htables
 
 
@@ -63,7 +64,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            all_persons = list(session.table(PersonRow).get_all())
+            all_persons = list(session.table(PersonRow).find())
             self.assertEqual(len(all_persons), 2)
             self.assertEqual(all_persons[0], {'hello': "world"})
             self.assertEqual(all_persons[0].id, 1)
@@ -267,6 +268,32 @@ class _HTablesApiTest(unittest.TestCase):
         with self.db_session() as session:
             self.assertRaises(KeyError, lambda: session['no-such-table'])
 
+    @contextmanager
+    def expect_one_warning(self):
+        with warnings.catch_warnings(record=True) as warn_log:
+            warnings.simplefilter('always')
+            yield
+            self.assertEqual(len(warn_log), 1)
+            [warn] = warn_log
+            self.assertTrue(issubclass(warn.category, DeprecationWarning))
+            self.assertIn("deprecated", str(warn.message))
+
+    def test_deprecation_table_save(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                table = session['person']
+                table.save(table.new())
+
+    def test_deprecation_session_save(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                table = session['person']
+                session.save(table.new())
+
+    def test_deprecation_table_get_all(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                session['person'].get_all()
 
 
 class PostgresqlTest(_HTablesApiTest):

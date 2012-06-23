@@ -1,5 +1,6 @@
 import re
 import json
+import warnings
 import psycopg2.pool, psycopg2.extras
 
 
@@ -24,7 +25,7 @@ class TableRow(dict):
         self._table.delete(self.id)
 
     def save(self):
-        self._table.save(self)
+        self._table.save(self, _deprecation_warning=False)
 
 
 class DbFile(object):
@@ -139,7 +140,10 @@ class Table(object):
     def new(self, *args, **kwargs):
         return self._row(data=dict(*args, **kwargs))
 
-    def save(self, obj):
+    def save(self, obj, _deprecation_warning=True):
+        if _deprecation_warning:
+            msg = "Table.save(row) is deprecated; use row.save() instead."
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
         if self._session._debug:
             for key, value in obj.iteritems():
                 assert isinstance(key, basestring), \
@@ -162,12 +166,15 @@ class Table(object):
         assert isinstance(obj_id, int)
         self._delete(obj_id)
 
-    def get_all(self):
-        for ob_id, ob_data in self._select_all():
-            yield self._row(ob_id, ob_data)
+    def get_all(self, _deprecation_warning=True):
+        if _deprecation_warning:
+            msg = "Table.get_all() is deprecated; use Table.find() instead."
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        return self.find()
 
     def find(self, **kwargs):
-        for row in self.get_all():
+        for ob_id, ob_data in self._select_all():
+            row = self._row(ob_id, ob_data)
             if all(row[k] == kwargs[k] for k in kwargs):
                 yield row
 
@@ -247,8 +254,11 @@ class Session(object):
         else:
             raise KeyError
 
-    def save(self, obj):
-        self.table(obj).save(obj)
+    def save(self, obj, _deprecation_warning=True):
+        if _deprecation_warning:
+            msg = "Session.save(row) is deprecated; use row.save() instead."
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        self.table(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
         for row_cls in self._schema.tables:
