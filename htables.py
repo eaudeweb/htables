@@ -130,10 +130,14 @@ class Table(object):
         cursor = self._session.conn.cursor()
         cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
 
-    def new(self):
-        ob = self._row_cls()
+    def _row(self, id=None, data={}):
+        ob = self._row_cls(data)
+        ob.id = id
         ob._table = self
         return ob
+
+    def new(self):
+        return self._row()
 
     def save(self, obj):
         if self._session._debug:
@@ -152,10 +156,7 @@ class Table(object):
         if len(rows) == 0:
             raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
-        obj = self._row_cls(data)
-        obj._table = self
-        obj.id = obj_id
-        return obj
+        return self._row(obj_id, data)
 
     def delete(self, obj_id):
         assert isinstance(obj_id, int)
@@ -163,10 +164,7 @@ class Table(object):
 
     def get_all(self):
         for ob_id, ob_data in self._select_all():
-            ob = self._row_cls(ob_data)
-            ob._table = self
-            ob.id = ob_id
-            yield ob
+            yield self._row(ob_id, ob_data)
 
 
 class Session(object):
