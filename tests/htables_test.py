@@ -88,6 +88,41 @@ class _HTablesApiTest(unittest.TestCase):
             person = session.table(PersonRow).get(1)
             self.assertEqual(person, {"k2": "vX", "k3": "v3", "k4": "v4"})
 
+    def test_save_from_row(self):
+        with self.db_session() as session:
+            session.save(PersonRow(hello="world"))
+            session.commit()
+
+        with self.db_session() as session:
+            person = session.table(PersonRow).get(1)
+            person['hello'] = "George"
+            person.save()
+            session.commit()
+
+        with self.db_session() as session:
+            person = session.table(PersonRow).get(1)
+            self.assertEqual(person, {'hello': "George"})
+
+    def test_table_row_factory(self):
+        with self.db_session() as session:
+            row = session['person'].new()
+            row['hello'] = 'world'
+            row.save()
+            session.commit()
+
+        with self.db_session() as session:
+            person = session.table(PersonRow).get(1)
+            self.assertEqual(person, {'hello': 'world'})
+
+    def test_table_row_factory_with_dict_args(self):
+        with self.db_session() as session:
+            session['person'].new({'hello': 'world'}, a='b').save()
+            session.commit()
+
+        with self.db_session() as session:
+            person = session.table(PersonRow).get(1)
+            self.assertEqual(person, {'hello': 'world', 'a': 'b'})
+
     def test_delete(self):
         with self.db_session() as session:
             session.save(PersonRow(hello="world"))
@@ -95,6 +130,21 @@ class _HTablesApiTest(unittest.TestCase):
 
         with self.db_session() as session:
             session.table(PersonRow).delete(1)
+            session.commit()
+
+        with self.db_session() as session:
+            cursor = session.conn.cursor()
+            cursor.execute("SELECT * FROM person")
+            self.assertEqual(list(cursor), [])
+
+    def test_delete_from_row(self):
+        with self.db_session() as session:
+            session.save(PersonRow(hello="world"))
+            session.commit()
+
+        with self.db_session() as session:
+            row = session['person'].get(1)
+            row.delete()
             session.commit()
 
         with self.db_session() as session:
@@ -144,6 +194,19 @@ class _HTablesApiTest(unittest.TestCase):
 
         with self.db_session() as session:
             self.assertEqual(self._count_large_files(session), 0)
+
+    def test_table_access(self):
+        with self.db_session() as session:
+            session.save(PersonRow(hello="world"))
+            session.commit()
+
+        with self.db_session() as session:
+            table = session['person']
+            self.assertEqual(table.get(1), {'hello': 'world'})
+
+    def test_table_access_bad_name(self):
+        with self.db_session() as session:
+            self.assertRaises(KeyError, lambda: session['no-such-table'])
 
 
 

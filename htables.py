@@ -20,6 +20,12 @@ class TableRow(dict):
 
     id = None
 
+    def delete(self):
+        self._table.delete(self.id)
+
+    def save(self):
+        self._table.save(self)
+
 
 class DbFile(object):
 
@@ -124,6 +130,15 @@ class Table(object):
         cursor = self._session.conn.cursor()
         cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
 
+    def _row(self, id=None, data={}):
+        ob = self._row_cls(data)
+        ob.id = id
+        ob._table = self
+        return ob
+
+    def new(self, *args, **kwargs):
+        return self._row(data=dict(*args, **kwargs))
+
     def save(self, obj):
         if self._session._debug:
             for key, value in obj.iteritems():
@@ -141,9 +156,7 @@ class Table(object):
         if len(rows) == 0:
             raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
-        obj = self._row_cls(data)
-        obj.id = obj_id
-        return obj
+        return self._row(obj_id, data)
 
     def delete(self, obj_id):
         assert isinstance(obj_id, int)
@@ -151,9 +164,7 @@ class Table(object):
 
     def get_all(self):
         for ob_id, ob_data in self._select_all():
-            ob = self._row_cls(ob_data)
-            ob.id = ob_id
-            yield ob
+            yield self._row(ob_id, ob_data)
 
 
 class Session(object):
@@ -200,6 +211,13 @@ class Session(object):
             raise ValueError("Can't determine table type from %r" %
                              (obj_or_cls,))
         return self._table_cls(row_cls, self)
+
+    def __getitem__(self, name):
+        for table_cls in self._schema.tables:
+            if table_cls._table == name:
+                return self.table(table_cls)
+        else:
+            raise KeyError
 
     def save(self, obj):
         self.table(obj).save(obj)
