@@ -58,9 +58,16 @@ class SessionPool(object):
         self._conn_pool = psycopg2.pool.ThreadedConnectionPool(0, 5, **params)
         self._debug = debug
 
-    def get_session(self):
+    def _get_connection(self):
         conn = self._conn_pool.getconn()
         psycopg2.extras.register_hstore(conn, globally=False, unicode=True)
+        return conn
+
+    def get_session(self, lazy=False):
+        if lazy:
+            conn = _lazy
+        else:
+            conn = self._get_connection()
         session = Session(self._schema, conn)
         if self._debug:
             session._debug = True
@@ -214,6 +221,7 @@ class Table(object):
 
 
 _expired = object()
+_lazy = object()
 
 
 class Session(object):

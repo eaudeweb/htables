@@ -3,6 +3,7 @@ import unittest2 as unittest
 from contextlib import contextmanager
 from StringIO import StringIO
 import warnings
+from mock import Mock
 
 
 def setUpModule(self):
@@ -327,6 +328,14 @@ class PostgresqlTest(_HTablesApiTest):
         finally:
             session_pool.put_session(session)
 
+
+def insert_spy(obj, attr_name):
+    original_callable = getattr(obj, attr_name)
+    spy = Mock(side_effect=original_callable)
+    setattr(obj, attr_name, spy)
+    return spy
+
+
 class PostgresqlSessionTest(unittest.TestCase):
 
     CONNECTION_URI = PostgresqlTest.CONNECTION_URI
@@ -339,6 +348,13 @@ class PostgresqlSessionTest(unittest.TestCase):
         session = session_pool.get_session()
         session_pool.put_session(session)
         self.assertRaises(ValueError, session.commit)
+
+    def test_lazy_session_does_not_initially_fetch_connection(self):
+        session_pool = self._get_session_pool()
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        spy = insert_spy(session_pool._conn_pool, 'getconn')
+        session = session_pool.get_session(lazy=True)
+        self.assertEqual(spy.mock_calls, [])
 
 
 class SqliteTest(_HTablesApiTest):
