@@ -284,6 +284,12 @@ class _HTablesApiTest(unittest.TestCase):
                 table = session['person']
                 table.save(table.new())
 
+    def test_deprecation_session_save(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                table = session['person']
+                session.save(table.new())
+
 
 class PostgresqlTest(_HTablesApiTest):
 

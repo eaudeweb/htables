@@ -251,7 +251,10 @@ class Session(object):
         else:
             raise KeyError
 
-    def save(self, obj):
+    def save(self, obj, _deprecation_warning=True):
+        if _deprecation_warning:
+            msg = "Session.save(row) is deprecated; use row.save() instead."
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
         self.table(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
