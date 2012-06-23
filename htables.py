@@ -22,10 +22,10 @@ class TableRow(dict):
     id = None
 
     def delete(self):
-        self._table.delete(self.id)
+        self._parent_table.delete(self.id)
 
     def save(self):
-        self._table.save(self, _deprecation_warning=False)
+        self._parent_table.save(self, _deprecation_warning=False)
 
 
 class DbFile(object):
@@ -134,7 +134,7 @@ class Table(object):
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
         ob.id = id
-        ob._table = self
+        ob._parent_table = self
         return ob
 
     def new(self, *args, **kwargs):
