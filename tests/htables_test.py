@@ -3,11 +3,12 @@ from contextlib import contextmanager
 from StringIO import StringIO
 import json
 import warnings
-import htables
 
 
-schema = htables.Schema()
-PersonRow = schema.define_table('PersonRow', 'person')
+def setUpModule(self):
+    import htables; self.htables = htables
+    self.schema = htables.Schema()
+    self.PersonRow = self.schema.define_table('PersonRow', 'person')
 
 
 class _HTablesApiTest(unittest.TestCase):
