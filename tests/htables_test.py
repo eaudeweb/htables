@@ -327,6 +327,12 @@ class PostgresqlTest(_HTablesApiTest):
         finally:
             session_pool.put_session(session)
 
+    def test_use_expired_connection(self):
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        session = session_pool.get_session()
+        session_pool.put_session(session)
+        self.assertRaises(ValueError, session.commit)
+
 
 class SqliteTest(_HTablesApiTest):
 
