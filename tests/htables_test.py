@@ -152,6 +152,10 @@ class _HTablesApiTest(unittest.TestCase):
             cursor.execute("SELECT * FROM person")
             self.assertEqual(list(cursor), [])
 
+    def test_find_no_data(self):
+        with self.db_session() as session:
+            self.assertEqual(list(session['person'].find()), [])
+
     def test_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()
