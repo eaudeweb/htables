@@ -23,6 +23,9 @@ class TableRow(dict):
     def delete(self):
         self._table.delete(self.id)
 
+    def save(self):
+        self._table.save(self)
+
 
 class DbFile(object):
 
