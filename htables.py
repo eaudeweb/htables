@@ -177,6 +177,10 @@ class Table(object):
         else:
             raise KeyError
 
+    def find_single(self, **kwargs):
+        results = iter(self.find(**kwargs))
+        return results.next()
+
 
 class Session(object):
 

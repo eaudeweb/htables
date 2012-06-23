@@ -189,6 +189,14 @@ class _HTablesApiTest(unittest.TestCase):
             table = session['person']
             self.assertRaises(KeyError, table.find_first, color='red')
 
+    def test_find_single(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='blue').save()
+            table.new(name='two', color='red').save()
+            row2 = table.get(2)
+            self.assertEqual(table.find_single(color='red'), row2)
+
     def test_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()
