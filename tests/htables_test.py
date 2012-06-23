@@ -19,7 +19,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_save(self):
         with self.db_session() as session:
-            session.save(PersonRow(hello="world"))
+            session['person'].new(hello="world").save()
             session.commit()
 
         with self.db_session() as session:
@@ -30,13 +30,12 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_autoincrement_id(self):
         with self.db_session() as session:
-            p1 = PersonRow()
-            p2 = PersonRow()
-            session.save(p1)
-            session.save(p2)
-            session.commit()
+            table = session['person']
+            p1 = table.new()
+            p2 = table.new()
             self.assertEqual(p1.id, 1)
             self.assertEqual(p2.id, 2)
+            session.commit()
 
         with self.db_session() as session:
             cursor = session.conn.cursor()
@@ -47,7 +46,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_load(self):
         with self.db_session() as session:
-            session.save(PersonRow(hello="world"))
+            session['person'].new(hello="world").save()
             session.commit()
 
         with self.db_session() as session:
@@ -61,8 +60,8 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_load_all(self):
         with self.db_session() as session:
-            session.save(PersonRow(hello="world"))
-            session.save(PersonRow(x="y"))
+            session['person'].new(hello="world").save()
+            session['person'].new(x="y").save()
             session.commit()
 
         with self.db_session() as session:
@@ -75,7 +74,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_update(self):
         with self.db_session() as session:
-            session.save(PersonRow(k1="v1", k2="v2", k3="v3"))
+            session['person'].new(k1="v1", k2="v2", k3="v3").save()
             session.commit()
 
         with self.db_session() as session:
@@ -84,7 +83,7 @@ class _HTablesApiTest(unittest.TestCase):
             person["k2"] = "vX" # change value
             # person["k3"] unchanged
             person["k4"] = "v4" # add value
-            session.save(person)
+            person.save()
             session.commit()
 
         with self.db_session() as session:
@@ -93,7 +92,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_save_from_row(self):
         with self.db_session() as session:
-            session.save(PersonRow(hello="world"))
+            session['person'].new(hello="world").save()
             session.commit()
 
         with self.db_session() as session:
@@ -129,7 +128,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_delete(self):
         with self.db_session() as session:
-            session.save(PersonRow(hello="world"))
+            session['person'].new(hello="world").save()
             session.commit()
 
         with self.db_session() as session:
@@ -143,7 +142,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_delete_from_row(self):
         with self.db_session() as session:
-            session.save(PersonRow(hello="world"))
+            session['person'].new(hello="world").save()
             session.commit()
 
         with self.db_session() as session:
@@ -260,7 +259,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_table_access(self):
         with self.db_session() as session:
-            session.save(PersonRow(hello="world"))
+            session['person'].new(hello="world").save()
             session.commit()
 
         with self.db_session() as session:
