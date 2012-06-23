@@ -166,6 +166,34 @@ class Table(object):
         for ob_id, ob_data in self._select_all():
             yield self._row(ob_id, ob_data)
 
+    def find(self, **kwargs):
+        for row in self.get_all():
+            if all(row[k] == kwargs[k] for k in kwargs):
+                yield row
+
+    def find_first(self, **kwargs):
+        for row in self.find(**kwargs):
+            return row
+        else:
+            raise KeyError
+
+    def find_single(self, **kwargs):
+        results = iter(self.find(**kwargs))
+
+        try:
+            row = results.next()
+        except StopIteration:
+            raise KeyError
+
+        try:
+            results.next()
+        except StopIteration:
+            pass
+        else:
+            raise ValueError("More than one row found")
+
+        return row
+
 
 class Session(object):
 

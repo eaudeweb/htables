@@ -152,6 +152,65 @@ class _HTablesApiTest(unittest.TestCase):
             cursor.execute("SELECT * FROM person")
             self.assertEqual(list(cursor), [])
 
+    def test_find_no_data(self):
+        with self.db_session() as session:
+            self.assertEqual(list(session['person'].find()), [])
+
+    def test_find_all_rows(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one').save()
+            table.new(name='two').save()
+            row1 = table.get(1)
+            row2 = table.get(2)
+            self.assertEqual(list(table.find()), [row1, row2])
+
+    def test_find_with_filter(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='red').save()
+            table.new(name='two', color='blue').save()
+            table.new(name='three', color='red').save()
+            row1 = table.get(1)
+            row3 = table.get(3)
+            self.assertEqual(list(table.find(color='red')), [row1, row3])
+
+    def test_find_first(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='blue').save()
+            table.new(name='two', color='red').save()
+            table.new(name='three', color='red').save()
+            row2 = table.get(2)
+            self.assertEqual(table.find_first(color='red'), row2)
+
+    def test_find_first_no_results(self):
+        with self.db_session() as session:
+            table = session['person']
+            self.assertRaises(KeyError, table.find_first, color='red')
+
+    def test_find_single(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='blue').save()
+            table.new(name='two', color='red').save()
+            row2 = table.get(2)
+            self.assertEqual(table.find_single(color='red'), row2)
+
+    def test_find_single_with_more_results(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='blue').save()
+            table.new(name='two', color='red').save()
+            table.new(name='three', color='red').save()
+            row2 = table.get(2)
+            self.assertRaises(ValueError, table.find_single, color='red')
+
+    def test_find_single_with_no_results(self):
+        with self.db_session() as session:
+            table = session['person']
+            self.assertRaises(KeyError, table.find_single, color='red')
+
     def test_large_file(self):
         with self.db_session() as session:
             db_file = session.get_db_file()
