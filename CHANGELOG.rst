@@ -1,3 +1,7 @@
+dev (unreleased)
+----------------
+* Lazy session that fetches a connection when first needed.
+
 0.3-rc1 (2012-06-23)
 --------------------
 * Several API changes to make it more pythonic.
