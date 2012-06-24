@@ -130,6 +130,8 @@ class Schema(object):
 
 
 class Table(object):
+    """ A database table with two columns: ``id`` (integer primary key) and
+    ``data`` (hstore). """
 
     def __init__(self, row_cls, session):
         self._session = session
@@ -181,6 +183,9 @@ class Table(object):
         return ob
 
     def new(self, *args, **kwargs):
+        """ Create a new :class:`TableRow` with auto-incremented `id`. An
+        `INSERT` SQL query is executed to generate the id. """
+
         row = self._row(data=dict(*args, **kwargs))
         row.save()
         return row
@@ -201,6 +206,8 @@ class Table(object):
             self._update(obj.id, obj)
 
     def get(self, obj_id):
+        """ Fetches the :class:`TableRow` with the given `id`. """
+
         rows = self._select_by_id(obj_id)
         if len(rows) == 0:
             raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
@@ -218,18 +225,28 @@ class Table(object):
         return self.find()
 
     def find(self, **kwargs):
+        """ Returns an iterator over all matching :class:`TableRow`
+        objects. """
+
         for ob_id, ob_data in self._select_all():
             row = self._row(ob_id, ob_data)
             if all(row[k] == kwargs[k] for k in kwargs):
                 yield row
 
     def find_first(self, **kwargs):
+        """ Shorthand for calling :meth:`find` and getting the first result.
+        Raises `KeyError` if no result is found. """
+
         for row in self.find(**kwargs):
             return row
         else:
             raise KeyError
 
     def find_single(self, **kwargs):
+        """ Shorthand for calling :meth:`find` and getting the first result.
+        Raises `KeyError` if no result is found. Raises `ValueError` if more
+        than one result is found. """
+
         results = iter(self.find(**kwargs))
 
         try:
