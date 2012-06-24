@@ -40,12 +40,17 @@ class TableRow(dict):
 
 
 class DbFile(object):
+    """ Database binary blob. It works like a file, but has a simpler API,
+    with methods to read and write a stream of byte chunks.
+    """
 
     def __init__(self, session, id):
         self.id = id
         self._session = session
 
     def save_from(self, in_file):
+        """ Consume data from `in_file` (a file-like object) and save to
+        database. """
         lobject = self._session.conn.lobject(self.id, 'wb')
         try:
             for block in _iter_file(in_file):
@@ -54,6 +59,7 @@ class DbFile(object):
             lobject.close()
 
     def iter_data(self):
+        """ Read data from database and return it as a Python generator. """
         lobject = self._session.conn.lobject(self.id, 'rb')
         return _iter_file(lobject, close=True)
 
