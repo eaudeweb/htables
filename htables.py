@@ -75,7 +75,8 @@ class SessionPool(object):
         return session
 
     def put_session(self, session):
-        self._conn_pool.putconn(session._release_conn())
+        if session._conn is not _lazy:
+            self._conn_pool.putconn(session._release_conn())
 
 
 class Schema(object):
