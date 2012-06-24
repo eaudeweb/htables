@@ -373,6 +373,16 @@ class PostgresqlSessionTest(unittest.TestCase):
         session_pool.put_session(session)
         self.assertEqual(spy.mock_calls, [])
 
+    def test_lazy_session_with_connection_puts_connection_back(self):
+        session_pool = self._get_session_pool()
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        spy = insert_spy(session_pool._conn_pool, 'putconn')
+        session = session_pool.get_session(lazy=True)
+        session.commit()
+        conn = session._conn
+        session_pool.put_session(session)
+        self.assertEqual(spy.mock_calls, [call(conn)])
+
 
 class SqliteTest(_HTablesApiTest):
 
