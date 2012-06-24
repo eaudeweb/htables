@@ -65,6 +65,7 @@ class DbFile(object):
 
 
 class SessionPool(object):
+    """ A pool of reusable database connections that get created on demand. """
 
     def __init__(self, schema, connection_uri, debug):
         self._schema = schema
@@ -78,6 +79,9 @@ class SessionPool(object):
         return conn
 
     def get_session(self, lazy=False):
+        """ Get a :class:`Session` for talking to the database. If `lazy` is
+        True then the connection is estabilished only when the first query
+        needs to be executed. """
         if lazy:
             conn = _lazy
         else:
@@ -89,6 +93,8 @@ class SessionPool(object):
         return session
 
     def put_session(self, session):
+        """ Retire the session, freeing up its connection, and aborting any
+        non-committed transaction. """
         if session._conn is not _lazy:
             self._conn_pool.putconn(session._release_conn())
 
