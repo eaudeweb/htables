@@ -21,23 +21,41 @@ def _iter_file(src_file, close=False):
 
 
 class TableRow(dict):
+    """ Database row, represented as a Python `dict`.
+
+    .. attribute:: id
+
+        Primary key of this row.
+    """
 
     id = None
 
     def delete(self):
+        """ Execute a `DELETE` query for this row. """
         self._parent_table.delete(self.id)
 
     def save(self):
+        """ Execute an `UPDATE` query for this row. """
         self._parent_table.save(self, _deprecation_warning=False)
 
 
 class DbFile(object):
+    """ Database binary blob. It works like a file, but has a simpler API,
+    with methods to read and write a stream of byte chunks.
+
+    .. attribute:: id
+
+        Unique ID of the file. It can be used to request the file later
+        via :meth:`Session.get_db_file`.
+    """
 
     def __init__(self, session, id):
         self.id = id
         self._session = session
 
     def save_from(self, in_file):
+        """ Consume data from `in_file` (a file-like object) and save to
+        database. """
         lobject = self._session.conn.lobject(self.id, 'wb')
         try:
             for block in _iter_file(in_file):
@@ -46,11 +64,13 @@ class DbFile(object):
             lobject.close()
 
     def iter_data(self):
+        """ Read data from database and return it as a Python generator. """
         lobject = self._session.conn.lobject(self.id, 'rb')
         return _iter_file(lobject, close=True)
 
 
 class SessionPool(object):
+    """ A pool of reusable database connections that get created on demand. """
 
     def __init__(self, schema, connection_uri, debug):
         self._schema = schema
@@ -64,6 +84,9 @@ class SessionPool(object):
         return conn
 
     def get_session(self, lazy=False):
+        """ Get a :class:`Session` for talking to the database. If `lazy` is
+        True then the connection is estabilished only when the first query
+        needs to be executed. """
         if lazy:
             conn = _lazy
         else:
@@ -75,6 +98,8 @@ class SessionPool(object):
         return session
 
     def put_session(self, session):
+        """ Retire the session, freeing up its connection, and aborting any
+        non-committed transaction. """
         if session._conn is not _lazy:
             self._conn_pool.putconn(session._release_conn())
 
@@ -105,6 +130,8 @@ class Schema(object):
 
 
 class Table(object):
+    """ A database table with two columns: ``id`` (integer primary key) and
+    ``data`` (hstore). """
 
     def __init__(self, row_cls, session):
         self._session = session
@@ -156,6 +183,9 @@ class Table(object):
         return ob
 
     def new(self, *args, **kwargs):
+        """ Create a new :class:`TableRow` with auto-incremented `id`. An
+        `INSERT` SQL query is executed to generate the id. """
+
         row = self._row(data=dict(*args, **kwargs))
         row.save()
         return row
@@ -176,6 +206,8 @@ class Table(object):
             self._update(obj.id, obj)
 
     def get(self, obj_id):
+        """ Fetches the :class:`TableRow` with the given `id`. """
+
         rows = self._select_by_id(obj_id)
         if len(rows) == 0:
             raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
@@ -193,18 +225,28 @@ class Table(object):
         return self.find()
 
     def find(self, **kwargs):
+        """ Returns an iterator over all matching :class:`TableRow`
+        objects. """
+
         for ob_id, ob_data in self._select_all():
             row = self._row(ob_id, ob_data)
             if all(row[k] == kwargs[k] for k in kwargs):
                 yield row
 
     def find_first(self, **kwargs):
+        """ Shorthand for calling :meth:`find` and getting the first result.
+        Raises `KeyError` if no result is found. """
+
         for row in self.find(**kwargs):
             return row
         else:
             raise KeyError
 
     def find_single(self, **kwargs):
+        """ Shorthand for calling :meth:`find` and getting the first result.
+        Raises `KeyError` if no result is found. Raises `ValueError` if more
+        than one result is found. """
+
         results = iter(self.find(**kwargs))
 
         try:
@@ -227,6 +269,8 @@ _lazy = object()
 
 
 class Session(object):
+    """ Wrapper for a database connection with methods to access tables and
+    commit/rollback transactions. """
 
     _debug = False
     _table_cls = Table
@@ -249,17 +293,22 @@ class Session(object):
         return conn
 
     def get_db_file(self, id=None):
+        """ Access a :class:`DbFile`. If `id` is `None`, a new file is created;
+        otherwise, the requested blob file is returned by id. """
         if id is None:
             id = self.conn.lobject(mode='n').oid
         return DbFile(self, id)
 
     def del_db_file(self, id):
+        """ Delete the :class:`DbFile` object with the given `id`. """
         self.conn.lobject(id, mode='n').unlink()
 
     def commit(self):
+        """ Commit the current transaction. """
         self.conn.commit()
 
     def rollback(self):
+        """ Roll back the current transaction. """
         # TODO needs a unit test
         self.conn.rollback()
 
@@ -284,6 +333,7 @@ class Session(object):
             yield self[name]
 
     def __getitem__(self, name):
+        """ Get the :class:`Table` called `name`. """
         return self._table_for_cls(self._schema[name])
 
     def save(self, obj, _deprecation_warning=True):
@@ -293,11 +343,15 @@ class Session(object):
         self._table_for_cls(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
+        """ Make sure all tables defined by the schema exist in the
+        database. """
         for table in self._tables():
             table._create()
         self._conn.commit()
 
     def drop_all(self):
+        """ Drop all tables defined by the schema and delete all blob
+        files. """
         for table in self._tables():
             table._drop()
         cursor = self.conn.cursor()
