@@ -42,6 +42,11 @@ class TableRow(dict):
 class DbFile(object):
     """ Database binary blob. It works like a file, but has a simpler API,
     with methods to read and write a stream of byte chunks.
+
+    .. attribute:: id
+
+        Unique ID of the file. It can be used to request the file later
+        via :meth:`Session.get_db_file`.
     """
 
     def __init__(self, session, id):
@@ -247,6 +252,8 @@ _lazy = object()
 
 
 class Session(object):
+    """ Wrapper for a database connection with methods to access tables and
+    commit/rollback transactions. """
 
     _debug = False
     _table_cls = Table
@@ -269,17 +276,22 @@ class Session(object):
         return conn
 
     def get_db_file(self, id=None):
+        """ Access a :class:`DbFile`. If `id` is `None`, a new file is created;
+        otherwise, the requested blob file is returned by id. """
         if id is None:
             id = self.conn.lobject(mode='n').oid
         return DbFile(self, id)
 
     def del_db_file(self, id):
+        """ Delete the :class:`DbFile` object with the given `id`. """
         self.conn.lobject(id, mode='n').unlink()
 
     def commit(self):
+        """ Commit the current transaction. """
         self.conn.commit()
 
     def rollback(self):
+        """ Roll back the current transaction. """
         # TODO needs a unit test
         self.conn.rollback()
 
@@ -304,6 +316,7 @@ class Session(object):
             yield self[name]
 
     def __getitem__(self, name):
+        """ Get the :class:`Table` called `name`. """
         return self._table_for_cls(self._schema[name])
 
     def save(self, obj, _deprecation_warning=True):
@@ -313,11 +326,15 @@ class Session(object):
         self._table_for_cls(obj).save(obj, _deprecation_warning=False)
 
     def create_all(self):
+        """ Make sure all tables defined by the schema exist in the
+        database. """
         for table in self._tables():
             table._create()
         self._conn.commit()
 
     def drop_all(self):
+        """ Drop all tables defined by the schema and delete all blob
+        files. """
         for table in self._tables():
             table._drop()
         cursor = self.conn.cursor()
