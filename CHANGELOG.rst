@@ -1,4 +1,4 @@
-dev (unreleased)
+0.3 (2012-06-24)
 ----------------
 * Lazy session that fetches a connection when first needed.
 
