@@ -133,7 +133,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            session['person'].delete(1)
+            session['person'].get(1).delete()
             session.commit()
 
         with self.db_session() as session:
@@ -289,6 +289,12 @@ class _HTablesApiTest(unittest.TestCase):
             with self.expect_one_warning():
                 table = session['person']
                 table.save(table.new())
+
+    def test_deprecation_table_delete(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                table = session['person']
+                table.delete(table.new().id)
 
     def test_deprecation_session_save(self):
         with self.db_session() as session:

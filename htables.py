@@ -32,7 +32,7 @@ class TableRow(dict):
 
     def delete(self):
         """ Execute a `DELETE` query for this row. """
-        self._parent_table.delete(self.id)
+        self._parent_table.delete(self.id, _deprecation_warning=False)
 
     def save(self):
         """ Execute an `UPDATE` query for this row. """
@@ -214,8 +214,11 @@ class Table(object):
         [(data,)] = rows
         return self._row(obj_id, data)
 
-    def delete(self, obj_id):
-        assert isinstance(obj_id, int)
+    def delete(self, obj_id, _deprecation_warning=True):
+        if _deprecation_warning:
+            msg = "Table.delete(row) is deprecated; use row.delete() instead."
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        assert isinstance(obj_id, (int, long))
         self._delete(obj_id)
 
     def get_all(self, _deprecation_warning=True):
