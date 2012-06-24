@@ -3,6 +3,7 @@ import unittest2 as unittest
 from contextlib import contextmanager
 from StringIO import StringIO
 import warnings
+from mock import Mock, call
 
 
 def setUpModule(self):
@@ -132,7 +133,7 @@ class _HTablesApiTest(unittest.TestCase):
             session.commit()
 
         with self.db_session() as session:
-            session['person'].delete(1)
+            session['person'].get(1).delete()
             session.commit()
 
         with self.db_session() as session:
@@ -289,6 +290,12 @@ class _HTablesApiTest(unittest.TestCase):
                 table = session['person']
                 table.save(table.new())
 
+    def test_deprecation_table_delete(self):
+        with self.db_session() as session:
+            with self.expect_one_warning():
+                table = session['person']
+                table.delete(table.new().id)
+
     def test_deprecation_session_save(self):
         with self.db_session() as session:
             with self.expect_one_warning():
@@ -326,6 +333,61 @@ class PostgresqlTest(_HTablesApiTest):
             yield session
         finally:
             session_pool.put_session(session)
+
+
+def insert_spy(obj, attr_name):
+    original_callable = getattr(obj, attr_name)
+    spy = Mock(side_effect=original_callable)
+    setattr(obj, attr_name, spy)
+    return spy
+
+
+class PostgresqlSessionTest(unittest.TestCase):
+
+    CONNECTION_URI = PostgresqlTest.CONNECTION_URI
+
+    def _get_session_pool(self):
+        return schema.bind(self.CONNECTION_URI, debug=True)
+
+    def test_use_expired_connection(self):
+        session_pool = self._get_session_pool()
+        session = session_pool.get_session()
+        session_pool.put_session(session)
+        self.assertRaises(ValueError, session.commit)
+
+    def test_lazy_session_does_not_initially_fetch_connection(self):
+        session_pool = self._get_session_pool()
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        spy = insert_spy(session_pool._conn_pool, 'getconn')
+        session = session_pool.get_session(lazy=True)
+        self.assertEqual(spy.mock_calls, [])
+
+    def test_lazy_session_eventually_asks_for_connection(self):
+        session_pool = self._get_session_pool()
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        spy = insert_spy(session_pool._conn_pool, 'getconn')
+        session = session_pool.get_session(lazy=True)
+        session.commit()
+        self.assertEqual(spy.mock_calls, [call()])
+        self.addCleanup(session_pool.put_session, session)
+
+    def test_lazy_session_with_no_connection_is_returned_ok(self):
+        session_pool = self._get_session_pool()
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        spy = insert_spy(session_pool._conn_pool, 'putconn')
+        session = session_pool.get_session(lazy=True)
+        session_pool.put_session(session)
+        self.assertEqual(spy.mock_calls, [])
+
+    def test_lazy_session_with_connection_puts_connection_back(self):
+        session_pool = self._get_session_pool()
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        spy = insert_spy(session_pool._conn_pool, 'putconn')
+        session = session_pool.get_session(lazy=True)
+        session.commit()
+        conn = session._conn
+        session_pool.put_session(session)
+        self.assertEqual(spy.mock_calls, [call(conn)])
 
 
 class SqliteTest(_HTablesApiTest):
