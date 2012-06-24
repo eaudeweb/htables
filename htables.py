@@ -58,16 +58,25 @@ class SessionPool(object):
         self._conn_pool = psycopg2.pool.ThreadedConnectionPool(0, 5, **params)
         self._debug = debug
 
-    def get_session(self):
+    def _get_connection(self):
         conn = self._conn_pool.getconn()
         psycopg2.extras.register_hstore(conn, globally=False, unicode=True)
+        return conn
+
+    def get_session(self, lazy=False):
+        if lazy:
+            conn = _lazy
+        else:
+            conn = self._get_connection()
         session = Session(self._schema, conn)
+        session._pool = self
         if self._debug:
             session._debug = True
         return session
 
     def put_session(self, session):
-        self._conn_pool.putconn(session._release_conn())
+        if session._conn is not _lazy:
+            self._conn_pool.putconn(session._release_conn())
 
 
 class Schema(object):
@@ -213,6 +222,10 @@ class Table(object):
         return row
 
 
+_expired = object()
+_lazy = object()
+
+
 class Session(object):
 
     _debug = False
@@ -224,13 +237,15 @@ class Session(object):
 
     @property
     def conn(self):
-        if self._conn is None:
+        if self._conn is _expired:
             raise ValueError("Error: trying to use expired database session")
+        elif self._conn is _lazy:
+            self._conn = self._pool._get_connection()
         return self._conn
 
     def _release_conn(self):
         conn = self._conn
-        self._conn = None
+        self._conn = _expired
         return conn
 
     def get_db_file(self, id=None):
