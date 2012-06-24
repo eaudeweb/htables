@@ -69,6 +69,7 @@ class SessionPool(object):
         else:
             conn = self._get_connection()
         session = Session(self._schema, conn)
+        session._pool = self
         if self._debug:
             session._debug = True
         return session
@@ -237,6 +238,8 @@ class Session(object):
     def conn(self):
         if self._conn is _expired:
             raise ValueError("Error: trying to use expired database session")
+        elif self._conn is _lazy:
+            self._conn = self._pool._get_connection()
         return self._conn
 
     def _release_conn(self):

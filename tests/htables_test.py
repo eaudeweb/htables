@@ -3,7 +3,7 @@ import unittest2 as unittest
 from contextlib import contextmanager
 from StringIO import StringIO
 import warnings
-from mock import Mock
+from mock import Mock, call
 
 
 def setUpModule(self):
@@ -355,6 +355,15 @@ class PostgresqlSessionTest(unittest.TestCase):
         spy = insert_spy(session_pool._conn_pool, 'getconn')
         session = session_pool.get_session(lazy=True)
         self.assertEqual(spy.mock_calls, [])
+
+    def test_lazy_session_eventually_asks_for_connection(self):
+        session_pool = self._get_session_pool()
+        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
+        spy = insert_spy(session_pool._conn_pool, 'getconn')
+        session = session_pool.get_session(lazy=True)
+        session.commit()
+        self.assertEqual(spy.mock_calls, [call()])
+        self.addCleanup(session_pool.put_session, session)
 
 
 class SqliteTest(_HTablesApiTest):
