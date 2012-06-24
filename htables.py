@@ -21,13 +21,21 @@ def _iter_file(src_file, close=False):
 
 
 class TableRow(dict):
+    """ Database row, represented as a Python `dict`.
+
+    .. attribute:: id
+
+        Primary key of this row.
+    """
 
     id = None
 
     def delete(self):
+        """ Execute a `DELETE` query for this row. """
         self._parent_table.delete(self.id)
 
     def save(self):
+        """ Execute an `UPDATE` query for this row. """
         self._parent_table.save(self, _deprecation_warning=False)
 
 
