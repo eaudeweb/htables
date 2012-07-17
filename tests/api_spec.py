@@ -201,12 +201,14 @@ class _HTablesApiTest(TestCase):
             self.assertEqual(table.find_single(color='red'), row2)
 
     def test_find_single_with_more_results(self):
+        from htables import MultipleRowsFound
         with self.db_session() as session:
             table = session['person']
             table.new(name='one', color='blue').save()
             table.new(name='two', color='red').save()
             table.new(name='three', color='red').save()
-            self.assertRaises(ValueError, table.find_single, color='red')
+            self.assertRaises(MultipleRowsFound,
+                              table.find_single, color='red')
 
     def test_find_single_with_no_results(self):
         from htables import RowNotFound

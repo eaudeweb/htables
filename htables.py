@@ -19,6 +19,11 @@ class RowNotFound(KeyError):
     # TODO don't subclass from KeyError
 
 
+class MultipleRowsFound(ValueError):
+    """ Multiple rows matching search critera. """
+    # TODO don't subclass ValueError
+
+
 COPY_BUFFER_SIZE = 2 ** 14
 
 def _iter_file(src_file, close=False):
@@ -265,8 +270,8 @@ class Table(object):
 
     def find_single(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
-        Raises `RowNotFound` if no result is found. Raises `ValueError` if more
-        than one result is found. """
+        Raises `RowNotFound` if no result is found. Raises `MultipleRowsFound`
+        if more than one result is found. """
 
         results = iter(self.find(**kwargs))
 
@@ -280,7 +285,7 @@ class Table(object):
         except StopIteration:
             pass
         else:
-            raise ValueError("More than one row found")
+            raise MultipleRowsFound("More than one row found")
 
         return row
 
