@@ -5,12 +5,13 @@ from mock import Mock, call
 from api_spec import create_schema, _HTablesApiTest
 
 
+CONNECTION_URI = 'postgresql://localhost/htables_test'
+
+
 class PostgresqlTest(_HTablesApiTest):
 
-    CONNECTION_URI = 'postgresql://localhost/htables_test'
-
     def setUp(self):
-        self.session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
+        self.db = self.schema.bind(self.CONNECTION_URI, debug=True)
         with self.db_session() as session:
             session.create_all()
 
@@ -20,11 +21,11 @@ class PostgresqlTest(_HTablesApiTest):
 
     @contextmanager
     def db_session(self):
-        session = self.session_pool.get_session()
+        session = self.db.get_session()
         try:
             yield session
         finally:
-            self.session_pool.put_session(session)
+            self.db.put_session(session)
 
 
 def insert_spy(obj, attr_name):
@@ -36,46 +37,44 @@ def insert_spy(obj, attr_name):
 
 class PostgresqlSessionTest(unittest.TestCase):
 
-    CONNECTION_URI = PostgresqlTest.CONNECTION_URI
-
     def setUp(self):
         self.schema = create_schema()
 
-    def _get_session_pool(self):
+    def get_db(self):
         return self.schema.bind(self.CONNECTION_URI, debug=True)
 
     def test_use_expired_connection(self):
-        session_pool = self._get_session_pool()
-        session = session_pool.get_session()
-        session_pool.put_session(session)
+        db = self.get_db()
+        session = db.get_session()
+        db.put_session(session)
         self.assertRaises(ValueError, session.commit)
 
     def test_lazy_session_does_not_initially_fetch_connection(self):
-        session_pool = self._get_session_pool()
-        spy = insert_spy(session_pool._conn_pool, 'getconn')
-        session_pool.get_session(lazy=True)
+        db = self.get_db()
+        spy = insert_spy(db._conn_pool, 'getconn')
+        db.get_session(lazy=True)
         self.assertEqual(spy.mock_calls, [])
 
     def test_lazy_session_eventually_asks_for_connection(self):
-        session_pool = self._get_session_pool()
-        spy = insert_spy(session_pool._conn_pool, 'getconn')
-        session = session_pool.get_session(lazy=True)
+        db = self.get_db()
+        spy = insert_spy(db._conn_pool, 'getconn')
+        session = db.get_session(lazy=True)
         session.commit()
         self.assertEqual(spy.mock_calls, [call()])
-        self.addCleanup(session_pool.put_session, session)
+        self.addCleanup(db.put_session, session)
 
     def test_lazy_session_with_no_connection_is_returned_ok(self):
-        session_pool = self._get_session_pool()
-        spy = insert_spy(session_pool._conn_pool, 'putconn')
-        session = session_pool.get_session(lazy=True)
-        session_pool.put_session(session)
+        db = self.get_db()
+        spy = insert_spy(db._conn_pool, 'putconn')
+        session = db.get_session(lazy=True)
+        db.put_session(session)
         self.assertEqual(spy.mock_calls, [])
 
     def test_lazy_session_with_connection_puts_connection_back(self):
-        session_pool = self._get_session_pool()
-        spy = insert_spy(session_pool._conn_pool, 'putconn')
-        session = session_pool.get_session(lazy=True)
+        db = self.get_db()
+        spy = insert_spy(db._conn_pool, 'putconn')
+        session = db.get_session(lazy=True)
         session.commit()
         conn = session._conn
-        session_pool.put_session(session)
+        db.put_session(session)
         self.assertEqual(spy.mock_calls, [call(conn)])
