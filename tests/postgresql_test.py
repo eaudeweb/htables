@@ -1,7 +1,6 @@
 from __future__ import with_statement
 import unittest2 as unittest
 from contextlib import contextmanager
-import simplejson as json
 from mock import Mock, call
 from api_spec import create_schema, _HTablesApiTest
 
@@ -84,30 +83,3 @@ class PostgresqlSessionTest(unittest.TestCase):
         conn = session._conn
         session_pool.put_session(session)
         self.assertEqual(spy.mock_calls, [call(conn)])
-
-
-class SqliteTest(_HTablesApiTest):
-
-    def setUp(self):
-        super(SqliteTest, self).setUp()
-        import sqlite3
-        self.conn = sqlite3.connect(':memory:')
-        self.db_files = {}
-
-    @contextmanager
-    def db_session(self):
-        import htables
-        sqlite_session = htables.SqliteSession(
-            self.schema, self.conn, self.db_files)
-        sqlite_session.create_all()
-        yield sqlite_session
-
-    def _unpack_data(self, value):
-        return json.loads(value)
-
-    def _count_large_files(self, session):
-        return len(self.db_files)
-
-    def test_large_file_error(self):
-        from nose import SkipTest
-        raise SkipTest
