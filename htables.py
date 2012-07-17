@@ -84,7 +84,7 @@ def PostgresqlDB(uri, schema, debug=False):
 class SessionPool(object):
     """ A pool of reusable database connections that get created on demand. """
 
-    def __init__(self, schema, connection_uri, debug):
+    def __init__(self, connection_uri, schema, debug):
         self._schema = schema
         params = transform_connection_uri(connection_uri)
         self._conn_pool = psycopg2.pool.ThreadedConnectionPool(0, 5, **params)
@@ -138,7 +138,7 @@ class Schema(object):
         return iter(self._by_name)
 
     def bind(self, connection_uri, debug=False):
-        return SessionPool(self, connection_uri, debug)
+        return SessionPool(connection_uri, self, debug)
 
 
 class Table(object):
