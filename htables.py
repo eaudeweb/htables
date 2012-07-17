@@ -134,6 +134,8 @@ class Schema(object):
         return iter(self._by_name)
 
     def bind(self, connection_uri, debug=False):
+        msg = "Schema.bind() is deprecated; use PostgresqlDB() instead."
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return PostgresqlDB(connection_uri, self, debug)
 
 
