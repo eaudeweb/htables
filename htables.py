@@ -77,14 +77,10 @@ class DbFile(object):
         return _iter_file(lobject, close=True)
 
 
-def PostgresqlDB(uri, schema, debug=False):
-    return schema.bind(uri, debug=debug)
-
-
-class SessionPool(object):
+class PostgresqlDB(object):
     """ A pool of reusable database connections that get created on demand. """
 
-    def __init__(self, connection_uri, schema, debug):
+    def __init__(self, connection_uri, schema, debug=False):
         self._schema = schema
         params = transform_connection_uri(connection_uri)
         self._conn_pool = psycopg2.pool.ThreadedConnectionPool(0, 5, **params)
@@ -138,7 +134,7 @@ class Schema(object):
         return iter(self._by_name)
 
     def bind(self, connection_uri, debug=False):
-        return SessionPool(connection_uri, self, debug)
+        return PostgresqlDB(connection_uri, self, debug)
 
 
 class Table(object):
