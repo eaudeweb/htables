@@ -10,6 +10,10 @@ import psycopg2.pool
 import psycopg2.extras
 
 
+class BlobsNotSupported(Exception):
+    """ This database does not support blobs. """
+
+
 COPY_BUFFER_SIZE = 2 ** 14
 
 def _iter_file(src_file, close=False):
@@ -428,6 +432,8 @@ class SqliteSession(Session):
         self._db_files = db_files
 
     def get_db_file(self, id=None):
+        if self._db_files is None:
+            raise BlobsNotSupported
         if id is None:
             while True:
                 id = random.randint(1, 10 ** 6)
@@ -455,7 +461,9 @@ class SqliteDB(object):
             _single_connection = self._connect()
             self._connect = lambda: _single_connection
             self.put_session = lambda session: None
-        self._files = {}
+            self._files = {}
+        else:
+            self._files = None
         self.schema = schema
 
     def get_session(self):
