@@ -8,35 +8,6 @@ from path import path
 from api_spec import _HTablesApiTest, create_schema
 
 
-class SqliteDB(object):
-
-    def __init__(self, uri, schema):
-        if uri == ':memory:':
-            self._single_connection = sqlite3.connect(uri)
-        else:
-            self._single_connection = None
-            self._uri = uri
-
-        self._files = {}
-        self.schema = schema
-
-    def _connect(self):
-        if self._single_connection is None:
-            return sqlite3.connect(self._uri)
-        else:
-            return self._single_connection
-
-    def get_session(self):
-        import htables
-        session = htables.SqliteSession(
-            self.schema, self._connect(), self._files)
-        return session
-
-    def put_session(self, session):
-        if self._single_connection is None:
-            session._release_conn().close()
-
-
 @contextmanager
 def db_session(pool):
     session = pool.get_session()
@@ -49,7 +20,8 @@ def db_session(pool):
 class SqliteTest(_HTablesApiTest):
 
     def setUp(self):
-        self.session_pool = SqliteDB(':memory:', schema=self.schema)
+        import htables
+        self.session_pool = htables.SqliteDB(':memory:', schema=self.schema)
 
         with self.db_session() as session:
             session.create_all()
@@ -83,13 +55,15 @@ class SqliteSessionTest(unittest.TestCase):
             self.assertEqual(list(session['person'].find()), [{'name': "Joe"}])
 
     def test_memory_consecutive_access(self):
-        db = SqliteDB(':memory:', schema=self.schema)
+        import htables
+        db = htables.SqliteDB(':memory:', schema=self.schema)
         self.assert_consecutive_sessions_access_same_database(db)
 
     def create_filesystem_db(self):
+        import htables
         self.tmp = path(tempfile.mkdtemp())
         self.addCleanup(self.tmp.rmtree)
-        return SqliteDB(self.tmp / 'db.sqlite', schema=self.schema)
+        return htables.SqliteDB(self.tmp / 'db.sqlite', schema=self.schema)
 
     def test_filesystem_consecutive_access(self):
         db = self.create_filesystem_db()
