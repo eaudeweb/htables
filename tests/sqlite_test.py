@@ -1,9 +1,8 @@
 from __future__ import with_statement
 from contextlib import contextmanager
 import sqlite3
-import tempfile
 import simplejson as json
-from path import path
+from common import TestCase
 from api_spec import _HTablesApiTest
 
 
@@ -39,7 +38,7 @@ class SqliteTest(_HTablesApiTest):
         raise SkipTest
 
 
-class SqliteSessionTest(unittest.TestCase):
+class SqliteSessionTest(TestCase):
 
     def setUp(self):
         import htables
@@ -61,9 +60,8 @@ class SqliteSessionTest(unittest.TestCase):
 
     def create_filesystem_db(self):
         import htables
-        self.tmp = path(tempfile.mkdtemp())
-        self.addCleanup(self.tmp.rmtree)
-        return htables.SqliteDB(self.tmp / 'db.sqlite', schema=self.schema)
+        db_path = self.tmpdir() / 'db.sqlite'
+        return htables.SqliteDB(db_path, schema=self.schema)
 
     def test_filesystem_consecutive_access(self):
         db = self.create_filesystem_db()
