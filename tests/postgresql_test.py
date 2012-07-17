@@ -52,14 +52,12 @@ class PostgresqlSessionTest(unittest.TestCase):
 
     def test_lazy_session_does_not_initially_fetch_connection(self):
         session_pool = self._get_session_pool()
-        session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
         spy = insert_spy(session_pool._conn_pool, 'getconn')
         session_pool.get_session(lazy=True)
         self.assertEqual(spy.mock_calls, [])
 
     def test_lazy_session_eventually_asks_for_connection(self):
         session_pool = self._get_session_pool()
-        session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
         spy = insert_spy(session_pool._conn_pool, 'getconn')
         session = session_pool.get_session(lazy=True)
         session.commit()
@@ -68,7 +66,6 @@ class PostgresqlSessionTest(unittest.TestCase):
 
     def test_lazy_session_with_no_connection_is_returned_ok(self):
         session_pool = self._get_session_pool()
-        session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
         spy = insert_spy(session_pool._conn_pool, 'putconn')
         session = session_pool.get_session(lazy=True)
         session_pool.put_session(session)
@@ -76,7 +73,6 @@ class PostgresqlSessionTest(unittest.TestCase):
 
     def test_lazy_session_with_connection_puts_connection_back(self):
         session_pool = self._get_session_pool()
-        session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
         spy = insert_spy(session_pool._conn_pool, 'putconn')
         session = session_pool.get_session(lazy=True)
         session.commit()
