@@ -1,5 +1,4 @@
 from __future__ import with_statement
-import unittest2 as unittest
 from contextlib import contextmanager
 import sqlite3
 import tempfile

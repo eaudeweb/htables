@@ -1,8 +1,8 @@
 from __future__ import with_statement
-import unittest2 as unittest
 from StringIO import StringIO
 from contextlib import contextmanager
 import warnings
+from common import TestCase
 
 
 def create_schema():
@@ -12,14 +12,11 @@ def create_schema():
     return schema
 
 
-class _HTablesApiTest(unittest.TestCase):
+class _HTablesApiTest(TestCase):
 
-    def _pre_setup(self):
+    def preSetUp(self):
+        super(_HTablesApiTest, self).preSetUp()
         self.schema = create_schema()
-
-    def __call__(self, result=None):
-        self._pre_setup()
-        super(_HTablesApiTest, self).__call__(result)
 
     def _unpack_data(self, value):
         return value
