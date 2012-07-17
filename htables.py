@@ -3,11 +3,15 @@ try:
     import simplejson as json
 except ImportError:
     import json
+import random
+import StringIO
 import warnings
-import psycopg2.pool, psycopg2.extras
+import psycopg2.pool
+import psycopg2.extras
 
 
-COPY_BUFFER_SIZE = 2**14
+COPY_BUFFER_SIZE = 2 ** 14
+
 def _iter_file(src_file, close=False):
     try:
         while True:
@@ -174,7 +178,8 @@ class Table(object):
 
     def _delete(self, obj_id):
         cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s",
+                       (obj_id,))
 
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
@@ -410,7 +415,8 @@ class SqliteTable(Table):
 
     def _delete(self, obj_id):
         cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?", (obj_id,))
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?",
+                       (obj_id,))
 
 
 class SqliteSession(Session):
@@ -423,9 +429,8 @@ class SqliteSession(Session):
 
     def get_db_file(self, id=None):
         if id is None:
-            import random, string, StringIO
             while True:
-                id = random.randint(1, 10**6)
+                id = random.randint(1, 10 ** 6)
                 if id not in self._db_files:
                     break
             self._db_files[id] = StringIO.StringIO()

@@ -62,7 +62,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_load_not_found(self):
         with self.db_session() as session:
-            with self.assertRaises(KeyError) as e:
+            with self.assertRaises(KeyError):
                 session['person'].get(13)
 
     def test_load_all(self):
@@ -86,10 +86,10 @@ class _HTablesApiTest(unittest.TestCase):
 
         with self.db_session() as session:
             person = session['person'].get(1)
-            del person["k1"] # remove value
-            person["k2"] = "vX" # change value
+            del person["k1"]  # remove value
+            person["k2"] = "vX"  # change value
             # person["k3"] unchanged
-            person["k4"] = "v4" # add value
+            person["k4"] = "v4"  # add value
             person.save()
             session.commit()
 
@@ -213,7 +213,6 @@ class _HTablesApiTest(unittest.TestCase):
             table.new(name='one', color='blue').save()
             table.new(name='two', color='red').save()
             table.new(name='three', color='red').save()
-            row2 = table.get(2)
             self.assertRaises(ValueError, table.find_single, color='red')
 
     def test_find_single_with_no_results(self):
@@ -238,7 +237,7 @@ class _HTablesApiTest(unittest.TestCase):
         with self.db_session() as session:
             db_file = session.get_db_file(13)
             with self.assertRaises(psycopg2.OperationalError):
-                data = ''.join(db_file.iter_data())
+                ''.join(db_file.iter_data())
 
         with self.db_session() as session:
             db_file = session.get_db_file(13)
@@ -279,7 +278,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     @contextmanager
     def expect_one_warning(self):
-        if not hasattr(warnings, 'catch_warnings'): # python < 2.6
+        if not hasattr(warnings, 'catch_warnings'):  # python < 2.6
             from nose import SkipTest
             raise SkipTest
         with warnings.catch_warnings(record=True) as warn_log:

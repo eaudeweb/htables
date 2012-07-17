@@ -54,7 +54,7 @@ class PostgresqlSessionTest(unittest.TestCase):
         session_pool = self._get_session_pool()
         session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
         spy = insert_spy(session_pool._conn_pool, 'getconn')
-        session = session_pool.get_session(lazy=True)
+        session_pool.get_session(lazy=True)
         self.assertEqual(spy.mock_calls, [])
 
     def test_lazy_session_eventually_asks_for_connection(self):
