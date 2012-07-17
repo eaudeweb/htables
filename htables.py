@@ -14,6 +14,11 @@ class BlobsNotSupported(Exception):
     """ This database does not support blobs. """
 
 
+class RowNotFound(KeyError):
+    """ No row matching search criteria. """
+    # TODO don't subclass from KeyError
+
+
 COPY_BUFFER_SIZE = 2 ** 14
 
 def _iter_file(src_file, close=False):
@@ -223,7 +228,7 @@ class Table(object):
 
         rows = self._select_by_id(obj_id)
         if len(rows) == 0:
-            raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
+            raise RowNotFound("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
         return self._row(obj_id, data)
 
@@ -251,16 +256,16 @@ class Table(object):
 
     def find_first(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
-        Raises `KeyError` if no result is found. """
+        Raises `RowNotFound` if no result is found. """
 
         for row in self.find(**kwargs):
             return row
         else:
-            raise KeyError
+            raise RowNotFound
 
     def find_single(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
-        Raises `KeyError` if no result is found. Raises `ValueError` if more
+        Raises `RowNotFound` if no result is found. Raises `ValueError` if more
         than one result is found. """
 
         results = iter(self.find(**kwargs))
@@ -268,7 +273,7 @@ class Table(object):
         try:
             row = results.next()
         except StopIteration:
-            raise KeyError
+            raise RowNotFound
 
         try:
             results.next()

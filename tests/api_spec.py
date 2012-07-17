@@ -52,8 +52,9 @@ class _HTablesApiTest(TestCase):
             self.assertEqual(person, {"hello": "world"})
 
     def test_load_not_found(self):
+        from htables import RowNotFound
         with self.db_session() as session:
-            with self.assertRaises(KeyError):
+            with self.assertRaises(RowNotFound):
                 session['person'].get(13)
 
     def test_load_all(self):
@@ -186,9 +187,10 @@ class _HTablesApiTest(TestCase):
             self.assertEqual(table.find_first(color='red'), row2)
 
     def test_find_first_no_results(self):
+        from htables import RowNotFound
         with self.db_session() as session:
             table = session['person']
-            self.assertRaises(KeyError, table.find_first, color='red')
+            self.assertRaises(RowNotFound, table.find_first, color='red')
 
     def test_find_single(self):
         with self.db_session() as session:
@@ -207,9 +209,10 @@ class _HTablesApiTest(TestCase):
             self.assertRaises(ValueError, table.find_single, color='red')
 
     def test_find_single_with_no_results(self):
+        from htables import RowNotFound
         with self.db_session() as session:
             table = session['person']
-            self.assertRaises(KeyError, table.find_single, color='red')
+            self.assertRaises(RowNotFound, table.find_single, color='red')
 
     def test_large_file(self):
         with self.db_session() as session:
