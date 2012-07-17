@@ -33,7 +33,8 @@ class SqliteDB(object):
         return session
 
     def put_session(self, session):
-        pass
+        if self._single_connection is None:
+            session._release_conn().close()
 
 
 @contextmanager
@@ -102,3 +103,10 @@ class SqliteSessionTest(unittest.TestCase):
             with db_session(db) as session2:
                 session1['person'].new(name="Joe")
                 self.assertEqual(list(session2['person'].find()), [])
+
+    def test_filesystem_closes_connection(self):
+        db = self.create_filesystem_db()
+        with db_session(db) as session:
+            connection = session.conn
+        self.assertRaises(sqlite3.ProgrammingError, connection.cursor)
+        self.assertRaises(ValueError, lambda: session.conn)
