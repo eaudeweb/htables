@@ -1,8 +1,9 @@
 from __future__ import with_statement
+import unittest2 as unittest
 from contextlib import contextmanager
 import sqlite3
 import simplejson as json
-from api_spec import _HTablesApiTest
+from api_spec import _HTablesApiTest, create_schema
 
 
 class SqliteDB(object):
@@ -54,3 +55,22 @@ class SqliteTest(_HTablesApiTest):
     def test_large_file_error(self):
         from nose import SkipTest
         raise SkipTest
+
+
+class SqliteSessionTest(unittest.TestCase):
+
+    def setUp(self):
+        self.schema = create_schema()
+
+    def assert_consecutive_sessions_access_same_database(self, db):
+        with db_session(db) as session:
+            session.create_all()
+            session['person'].new(name="Joe")
+            session.commit()
+
+        with db_session(db) as session:
+            self.assertEqual(list(session['person'].find()), [{'name': "Joe"}])
+
+    def test_memory_consecutive_access(self):
+        db = SqliteDB(':memory:', schema=self.schema)
+        self.assert_consecutive_sessions_access_same_database(db)
