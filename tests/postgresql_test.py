@@ -10,6 +10,7 @@ class PostgresqlTest(_HTablesApiTest):
     CONNECTION_URI = 'postgresql://localhost/htables_test'
 
     def setUp(self):
+        self.session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
         with self.db_session() as session:
             session.create_all()
 
@@ -19,12 +20,11 @@ class PostgresqlTest(_HTablesApiTest):
 
     @contextmanager
     def db_session(self):
-        session_pool = self.schema.bind(self.CONNECTION_URI, debug=True)
-        session = session_pool.get_session()
+        session = self.session_pool.get_session()
         try:
             yield session
         finally:
-            session_pool.put_session(session)
+            self.session_pool.put_session(session)
 
 
 def insert_spy(obj, attr_name):
