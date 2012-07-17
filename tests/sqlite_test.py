@@ -25,6 +25,15 @@ class SqliteDB(object):
         pass
 
 
+@contextmanager
+def db_session(pool):
+    session = pool.get_session()
+    try:
+        yield session
+    finally:
+        pool.put_session(session)
+
+
 class SqliteTest(_HTablesApiTest):
 
     def setUp(self):
@@ -33,13 +42,8 @@ class SqliteTest(_HTablesApiTest):
         with self.db_session() as session:
             session.create_all()
 
-    @contextmanager
     def db_session(self):
-        session = self.session_pool.get_session()
-        try:
-            yield session
-        finally:
-            self.session_pool.put_session(session)
+        return db_session(self.session_pool)
 
     def _unpack_data(self, value):
         return json.loads(value)
