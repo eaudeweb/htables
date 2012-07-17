@@ -160,8 +160,8 @@ class Table(object):
         self._row_cls = row_cls
         self._name = row_cls._table
 
-    def _execute(self, *args):
-        cursor = self._session.conn.cursor()
+    def _execute(self, *args, **kwargs):
+        cursor = kwargs.get('cursor') or self._session.conn.cursor()
         cursor.execute(*args)
         return cursor
 
@@ -177,7 +177,8 @@ class Table(object):
         cursor = self._execute("INSERT INTO " + self._name +
                                " (data) VALUES (%s)",
                                (obj,))
-        cursor.execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',))
+        self._execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',),
+                      cursor=cursor)
         [(last_insert_id,)] = list(cursor)
         return last_insert_id
 
