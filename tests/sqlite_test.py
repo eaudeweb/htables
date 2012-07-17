@@ -81,7 +81,7 @@ class SqliteSessionTest(TestCase):
         with db_session(db) as session:
             connection = session.conn
         self.assertRaises(sqlite3.ProgrammingError, connection.cursor)
-        self.assertRaises(ValueError, lambda: session.conn)
+        self.assertRaises(RuntimeError, lambda: session.conn)
 
     def test_filesystem_db_does_not_support_blobs(self):
         import htables

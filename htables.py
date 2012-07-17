@@ -308,7 +308,7 @@ class Session(object):
     @property
     def conn(self):
         if self._conn is _expired:
-            raise ValueError("Error: trying to use expired database session")
+            raise RuntimeError("Error: trying to use expired database session")
         elif self._conn is _lazy:
             self._conn = self._pool._get_connection()
         return self._conn
