@@ -114,8 +114,10 @@ class PostgresqlDB(object):
 
 class Schema(object):
 
-    def __init__(self):
+    def __init__(self, names=[]):
         self._by_name = {}
+        for name in names:
+            self.define_table(name, name)
 
     def define_table(self, cls_name, table_name):
         # TODO make sure table_name is safe

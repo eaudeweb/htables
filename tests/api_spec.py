@@ -5,18 +5,12 @@ import warnings
 from common import TestCase
 
 
-def create_schema():
-    import htables
-    schema = htables.Schema()
-    schema.define_table('PersonRow', 'person')
-    return schema
-
-
 class _HTablesApiTest(TestCase):
 
     def preSetUp(self):
         super(_HTablesApiTest, self).preSetUp()
-        self.schema = create_schema()
+        import htables
+        self.schema = htables.Schema(['person'])
 
     def _unpack_data(self, value):
         return value

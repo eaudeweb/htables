@@ -4,7 +4,7 @@ import sqlite3
 import tempfile
 import simplejson as json
 from path import path
-from api_spec import _HTablesApiTest, create_schema
+from api_spec import _HTablesApiTest
 
 
 @contextmanager
@@ -42,7 +42,8 @@ class SqliteTest(_HTablesApiTest):
 class SqliteSessionTest(unittest.TestCase):
 
     def setUp(self):
-        self.schema = create_schema()
+        import htables
+        self.schema = htables.Schema(['person'])
 
     def assert_consecutive_sessions_access_same_database(self, db):
         with db_session(db) as session:
