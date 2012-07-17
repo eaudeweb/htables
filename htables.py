@@ -160,44 +160,43 @@ class Table(object):
         self._row_cls = row_cls
         self._name = row_cls._table
 
-    def _create(self):
+    def _execute(self, *args):
         cursor = self._session.conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                            "id SERIAL PRIMARY KEY, "
-                            "data HSTORE)")
+        cursor.execute(*args)
+        return cursor
+
+    def _create(self):
+        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
+                      "id SERIAL PRIMARY KEY, "
+                      "data HSTORE)")
 
     def _drop(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS " + self._name)
+        self._execute("DROP TABLE IF EXISTS " + self._name)
 
     def _insert(self, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (%s)",
-                       (obj,))
+        cursor = self._execute("INSERT INTO " + self._name +
+                               " (data) VALUES (%s)",
+                               (obj,))
         cursor.execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',))
         [(last_insert_id,)] = list(cursor)
         return last_insert_id
 
     def _select_by_id(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT data FROM " + self._name + " WHERE id = %s",
-                       (obj_id,))
+        cursor = self._execute("SELECT data FROM " + self._name +
+                               " WHERE id = %s",
+                               (obj_id,))
         return list(cursor)
 
     def _select_all(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT id, data FROM " + self._name)
-        return cursor
+        return self._execute("SELECT id, data FROM " + self._name)
 
     def _update(self, obj_id, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
-                       (obj, obj_id))
+        self._execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
+                      (obj, obj_id))
 
     def _delete(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s",
-                       (obj_id,))
+        self._execute("DELETE FROM " + self._name + " WHERE id = %s",
+                      (obj_id,))
 
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
