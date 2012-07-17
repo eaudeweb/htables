@@ -450,29 +450,19 @@ class SqliteDB(object):
 
     def __init__(self, uri, schema):
         import sqlite3
+        self._connect = lambda: sqlite3.connect(uri)
         if uri == ':memory:':
-            self._single_connection = sqlite3.connect(uri)
-        else:
-            self._single_connection = None
-            self._uri = uri
-
+            _single_connection = self._connect()
+            self._connect = lambda: _single_connection
+            self.put_session = lambda session: None
         self._files = {}
         self.schema = schema
 
-    def _connect(self):
-        import sqlite3
-        if self._single_connection is None:
-            return sqlite3.connect(self._uri)
-        else:
-            return self._single_connection
-
     def get_session(self):
-        session = SqliteSession(self.schema, self._connect(), self._files)
-        return session
+        return SqliteSession(self.schema, self._connect(), self._files)
 
     def put_session(self, session):
-        if self._single_connection is None:
-            session._release_conn().close()
+        session._release_conn().close()
 
 
 def transform_connection_uri(connection_uri):
