@@ -403,38 +403,39 @@ class SqliteDbFile(object):
 
 class SqliteTable(Table):
 
-    def _create(self):
+    def _execute(self, *args):
         cursor = self._session.conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                            "id INTEGER PRIMARY KEY, "
-                            "data BLOB)")
+        cursor.execute(*args)
+        return cursor
+
+    def _create(self):
+        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
+                      "id INTEGER PRIMARY KEY, "
+                      "data BLOB)")
 
     def _insert(self, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (?)",
-                       (json.dumps(obj),))
+        cursor = self._execute("INSERT INTO " + self._name +
+                               " (data) VALUES (?)",
+                               (json.dumps(obj),))
         return cursor.lastrowid
 
     def _select_by_id(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT data FROM " + self._name + " WHERE id = ?",
-                       (obj_id,))
+        cursor = self._execute("SELECT data FROM " + self._name +
+                               " WHERE id = ?",
+                               (obj_id,))
         return [(json.loads(r[0]),) for r in cursor]
 
     def _select_all(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT id, data FROM " + self._name)
+        cursor = self._execute("SELECT id, data FROM " + self._name)
         return ((id, json.loads(data)) for (id, data) in cursor)
 
     def _update(self, obj_id, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
-                       (json.dumps(obj), obj_id))
+        self._execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
+                      (json.dumps(obj), obj_id))
 
     def _delete(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?",
-                       (obj_id,))
+        self._execute("DELETE FROM " + self._name + " WHERE id = ?",
+                      (obj_id,))
 
 
 class SqliteSession(Session):
