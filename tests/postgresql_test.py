@@ -8,10 +8,14 @@ from api_spec import create_schema, _HTablesApiTest
 CONNECTION_URI = 'postgresql://localhost/htables_test'
 
 
+def PostgresqlDB(uri, schema, debug=False):
+    return schema.bind(uri, debug=debug)
+
+
 class PostgresqlTest(_HTablesApiTest):
 
     def setUp(self):
-        self.db = self.schema.bind(self.CONNECTION_URI, debug=True)
+        self.db = PostgresqlDB(CONNECTION_URI, self.schema, debug=True)
         with self.db_session() as session:
             session.create_all()
 
@@ -41,7 +45,7 @@ class PostgresqlSessionTest(unittest.TestCase):
         self.schema = create_schema()
 
     def get_db(self):
-        return self.schema.bind(self.CONNECTION_URI, debug=True)
+        return PostgresqlDB(CONNECTION_URI, self.schema, debug=True)
 
     def test_use_expired_connection(self):
         db = self.get_db()
