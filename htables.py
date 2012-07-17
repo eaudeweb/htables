@@ -77,6 +77,10 @@ class DbFile(object):
         return _iter_file(lobject, close=True)
 
 
+def PostgresqlDB(uri, schema, debug=False):
+    return schema.bind(uri, debug=debug)
+
+
 class SessionPool(object):
     """ A pool of reusable database connections that get created on demand. """
 
