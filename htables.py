@@ -187,11 +187,8 @@ class Table(object):
                       "id SERIAL PRIMARY KEY, "
                       "data HSTORE)")
 
-    def _drop(self):
-        self._execute("DROP TABLE IF EXISTS " + self._name)
-
     def drop_table(self):
-        self._drop()
+        self._execute("DROP TABLE IF EXISTS " + self._name)
 
     def _insert(self, obj):
         cursor = self._execute("INSERT INTO " + self._name +
@@ -404,7 +401,7 @@ class Session(object):
         """ Drop all tables defined by the schema and delete all blob
         files. """
         for table in self._tables():
-            table._drop()
+            table.drop_table()
         cursor = self.conn.cursor()
         cursor.execute("SELECT oid FROM pg_largeobject_metadata")
         for [oid] in cursor:
@@ -499,7 +496,7 @@ class SqliteSession(Session):
 
     def drop_all(self):
         for table in self._tables():
-            table._drop()
+            table.drop_table()
         self._conn.commit()
         self._db_files.clear()
 
