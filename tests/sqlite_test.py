@@ -17,17 +17,9 @@ def db_session(pool):
 
 class SqliteTest(_HTablesApiTest):
 
-    def setUp(self):
-        self.db = self.create_db()
-        with self.db_session() as session:
-            session.create_all()
-
     def create_db(self):
         import htables
         return htables.SqliteDB(':memory:', schema=self.schema)
-
-    def db_session(self):
-        return db_session(self.db)
 
     def _unpack_data(self, value):
         return json.loads(value)

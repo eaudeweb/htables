@@ -10,26 +10,9 @@ CONNECTION_URI = 'postgresql://localhost/htables_test'
 
 class PostgresqlTest(_HTablesApiTest):
 
-    def setUp(self):
-        self.db = self.create_db()
-        with self.db_session() as session:
-            session.create_all()
-
     def create_db(self):
         import htables
         return htables.PostgresqlDB(CONNECTION_URI, self.schema, debug=True)
-
-    def tearDown(self):
-        with self.db_session() as session:
-            session.drop_all()
-
-    @contextmanager
-    def db_session(self):
-        session = self.db.get_session()
-        try:
-            yield session
-        finally:
-            self.db.put_session(session)
 
 
 def insert_spy(obj, attr_name):
