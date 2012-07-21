@@ -11,10 +11,13 @@ CONNECTION_URI = 'postgresql://localhost/htables_test'
 class PostgresqlTest(_HTablesApiTest):
 
     def setUp(self):
-        import htables
-        self.db = htables.PostgresqlDB(CONNECTION_URI, self.schema, debug=True)
+        self.db = self.create_db()
         with self.db_session() as session:
             session.create_all()
+
+    def create_db(self):
+        import htables
+        return htables.PostgresqlDB(CONNECTION_URI, self.schema, debug=True)
 
     def tearDown(self):
         with self.db_session() as session:

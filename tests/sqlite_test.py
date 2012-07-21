@@ -18,11 +18,13 @@ def db_session(pool):
 class SqliteTest(_HTablesApiTest):
 
     def setUp(self):
-        import htables
-        self.session_pool = htables.SqliteDB(':memory:', schema=self.schema)
-
+        self.session_pool = self.create_db()
         with self.db_session() as session:
             session.create_all()
+
+    def create_db(self):
+        import htables
+        return htables.SqliteDB(':memory:', schema=self.schema)
 
     def db_session(self):
         return db_session(self.session_pool)
