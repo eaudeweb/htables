@@ -18,7 +18,7 @@ def db_session(pool):
 class SqliteTest(_HTablesApiTest):
 
     def setUp(self):
-        self.session_pool = self.create_db()
+        self.db = self.create_db()
         with self.db_session() as session:
             session.create_all()
 
@@ -27,13 +27,13 @@ class SqliteTest(_HTablesApiTest):
         return htables.SqliteDB(':memory:', schema=self.schema)
 
     def db_session(self):
-        return db_session(self.session_pool)
+        return db_session(self.db)
 
     def _unpack_data(self, value):
         return json.loads(value)
 
     def _count_large_files(self, session):
-        return len(self.session_pool._files)
+        return len(self.db._files)
 
     def test_large_file_error(self):
         from nose import SkipTest
