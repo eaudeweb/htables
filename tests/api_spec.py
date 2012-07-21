@@ -293,6 +293,12 @@ class _HTablesApiTest(TestCase):
             with self.assertRaisesRegexp(MissingTable, r'^foo$') as e:
                 table.new()
 
+    def test_newly_created_table_holds_data(self):
+        with self.db_session() as session:
+            session['foo'].create_table()
+            row = session['foo'].new()
+            self.assertEqual(row.id, 1)
+
     @contextmanager
     def expect_one_warning(self):
         if not hasattr(warnings, 'catch_warnings'):  # python < 2.6

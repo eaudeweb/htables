@@ -187,6 +187,9 @@ class Table(object):
                       "id SERIAL PRIMARY KEY, "
                       "data HSTORE)")
 
+    def create_table(self):
+        self._create()
+
     def _drop(self):
         self._execute("DROP TABLE IF EXISTS " + self._name)
 
