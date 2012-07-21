@@ -377,7 +377,12 @@ class Session(object):
 
     def __getitem__(self, name):
         """ Get the :class:`Table` called `name`. """
-        return self._table_for_cls(self._schema[name])
+        try:
+            row_cls = self._schema[name]
+        except KeyError:
+            class row_cls(TableRow):
+                _table = name
+        return self._table_for_cls(row_cls)
 
     def save(self, obj, _deprecation_warning=True):
         if _deprecation_warning:
