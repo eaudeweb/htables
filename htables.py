@@ -182,13 +182,10 @@ class Table(object):
             raise
         return cursor
 
-    def _create(self):
+    def create_table(self):
         self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
                       "id SERIAL PRIMARY KEY, "
                       "data HSTORE)")
-
-    def create_table(self):
-        self._create()
 
     def _drop(self):
         self._execute("DROP TABLE IF EXISTS " + self._name)
@@ -397,7 +394,7 @@ class Session(object):
         """ Make sure all tables defined by the schema exist in the
         database. """
         for table in self._tables():
-            table._create()
+            table.create_table()
         self._conn.commit()
 
     def drop_all(self):
@@ -445,7 +442,7 @@ class SqliteTable(Table):
             raise
         return cursor
 
-    def _create(self):
+    def create_table(self):
         self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
                       "id INTEGER PRIMARY KEY, "
                       "data BLOB)")
