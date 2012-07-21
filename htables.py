@@ -6,6 +6,7 @@ except ImportError:
 import random
 import StringIO
 import warnings
+import re
 import psycopg2.pool
 import psycopg2.extras
 
@@ -22,6 +23,10 @@ class RowNotFound(KeyError):
 class MultipleRowsFound(ValueError):
     """ Multiple rows matching search critera. """
     # TODO don't subclass ValueError
+
+
+class MissingTable(RuntimeError):
+    """ Table missing from database. """
 
 
 COPY_BUFFER_SIZE = 2 ** 14
@@ -155,6 +160,8 @@ class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
     ``data`` (hstore). """
 
+    _missing_table_pattern = re.compile(r'^relation "([^"]+)" does not exist')
+
     def __init__(self, row_cls, session):
         self._session = session
         self._row_cls = row_cls
@@ -162,7 +169,17 @@ class Table(object):
 
     def _execute(self, *args, **kwargs):
         cursor = kwargs.get('cursor') or self._session.conn.cursor()
-        cursor.execute(*args)
+        try:
+            cursor.execute(*args)
+        except Exception, e:
+            from psycopg2 import ProgrammingError
+            if isinstance(e, ProgrammingError):
+                if e.args:
+                    m = self._missing_table_pattern.match(e.args[0])
+                    if m is not None:
+                        name = m.group(1)
+                        raise MissingTable(name)
+            raise
         return cursor
 
     def _create(self):
@@ -403,9 +420,21 @@ class SqliteDbFile(object):
 
 class SqliteTable(Table):
 
+    _missing_table_pattern = re.compile(r'^no such table: (.+)')
+
     def _execute(self, *args):
         cursor = self._session.conn.cursor()
-        cursor.execute(*args)
+        try:
+            cursor.execute(*args)
+        except Exception, e:
+            import sqlite3
+            if isinstance(e, sqlite3.OperationalError):
+                if e.args:
+                    m = self._missing_table_pattern.match(e.args[0])
+                    if m is not None:
+                        name = m.group(1)
+                        raise MissingTable(name)
+            raise
         return cursor
 
     def _create(self):

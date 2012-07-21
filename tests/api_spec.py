@@ -272,6 +272,14 @@ class _HTablesApiTest(TestCase):
         with self.db_session() as session:
             self.assertRaises(KeyError, lambda: session['no-such-table'])
 
+    def test_table_access_with_missing_sql_table_raises_exception(self):
+        from htables import MissingTable
+        self.schema.define_table('foo', 'foo')
+        with self.db_session() as session:
+            table = session['foo']
+            with self.assertRaisesRegexp(MissingTable, r'^foo$') as e:
+                table.new()
+
     @contextmanager
     def expect_one_warning(self):
         if not hasattr(warnings, 'catch_warnings'):  # python < 2.6
