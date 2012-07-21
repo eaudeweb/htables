@@ -299,6 +299,14 @@ class _HTablesApiTest(TestCase):
             row = session['foo'].new()
             self.assertEqual(row.id, 1)
 
+    def test_deleting_table_causes_exception(self):
+        import htables
+        with self.db_session() as session:
+            session['foo'].create_table()
+            session['foo'].drop_table()
+            with self.assertRaises(htables.MissingTable):
+                session['foo'].new()
+
     @contextmanager
     def expect_one_warning(self):
         if not hasattr(warnings, 'catch_warnings'):  # python < 2.6

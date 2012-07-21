@@ -190,6 +190,9 @@ class Table(object):
     def _drop(self):
         self._execute("DROP TABLE IF EXISTS " + self._name)
 
+    def drop_table(self):
+        self._drop()
+
     def _insert(self, obj):
         cursor = self._execute("INSERT INTO " + self._name +
                                " (data) VALUES (%s)",
