@@ -212,6 +212,32 @@ class PostgresqlDialect(object):
         self.execute("DELETE FROM " + name + " WHERE id = %s", (obj_id,))
 
 
+class SqliteDialect(object):
+
+    _missing_table_pattern = re.compile(r'^no such table: (.+)')
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    def execute(self, *args):
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute(*args)
+        except Exception, e:
+            import sqlite3
+            if isinstance(e, sqlite3.OperationalError):
+                if e.args:
+                    m = self._missing_table_pattern.match(e.args[0])
+                    if m is not None:
+                        name = m.group(1)
+                        raise MissingTable(name)
+            raise
+        return cursor
+
+    def drop_table(self, name):
+        self.execute("DROP TABLE IF EXISTS " + name)
+
+
 class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
     ``data`` (hstore). """
@@ -457,22 +483,11 @@ class SqliteDbFile(object):
 
 class SqliteTable(Table):
 
-    _missing_table_pattern = re.compile(r'^no such table: (.+)')
+    def _dialect(self):
+        return SqliteDialect(self._session.conn)
 
     def _execute(self, *args):
-        cursor = self._session.conn.cursor()
-        try:
-            cursor.execute(*args)
-        except Exception, e:
-            import sqlite3
-            if isinstance(e, sqlite3.OperationalError):
-                if e.args:
-                    m = self._missing_table_pattern.match(e.args[0])
-                    if m is not None:
-                        name = m.group(1)
-                        raise MissingTable(name)
-            raise
-        return cursor
+        return self._dialect().execute(*args)
 
     def create_table(self):
         self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
