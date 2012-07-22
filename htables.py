@@ -7,6 +7,7 @@ import random
 import StringIO
 import warnings
 import re
+from contextlib import contextmanager
 import psycopg2.pool
 import psycopg2.extras
 
@@ -125,6 +126,14 @@ class PostgresqlDB(object):
         non-committed transaction. """
         if session._conn is not _lazy:
             self._conn_pool.putconn(session._release_conn())
+
+    @contextmanager
+    def session(self):
+        s = self.get_session()
+        try:
+            yield s
+        finally:
+            self.put_session(s)
 
 
 class Schema(object):
@@ -544,6 +553,14 @@ class SqliteDB(object):
 
     def put_session(self, session):
         session._release_conn().close()
+
+    @contextmanager
+    def session(self):
+        s = self.get_session()
+        try:
+            yield s
+        finally:
+            self.put_session(s)
 
 
 def transform_connection_uri(connection_uri):

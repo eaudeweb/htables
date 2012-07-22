@@ -7,13 +7,8 @@ from common import TestCase
 
 class _HTablesApiTest(TestCase):
 
-    @contextmanager
     def db_session(self):
-        session = self.db.get_session()
-        try:
-            yield session
-        finally:
-            self.db.put_session(session)
+        return self.db.session()
 
     def preSetUp(self):
         super(_HTablesApiTest, self).preSetUp()
