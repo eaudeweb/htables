@@ -3,11 +3,19 @@ try:
     import simplejson as json
 except ImportError:
     import json
+import random
+import StringIO
 import warnings
-import psycopg2.pool, psycopg2.extras
+import psycopg2.pool
+import psycopg2.extras
 
 
-COPY_BUFFER_SIZE = 2**14
+class BlobsNotSupported(Exception):
+    """ This database does not support blobs. """
+
+
+COPY_BUFFER_SIZE = 2 ** 14
+
 def _iter_file(src_file, close=False):
     try:
         while True:
@@ -174,7 +182,8 @@ class Table(object):
 
     def _delete(self, obj_id):
         cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s", (obj_id,))
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s",
+                       (obj_id,))
 
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
@@ -410,7 +419,8 @@ class SqliteTable(Table):
 
     def _delete(self, obj_id):
         cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?", (obj_id,))
+        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?",
+                       (obj_id,))
 
 
 class SqliteSession(Session):
@@ -422,10 +432,11 @@ class SqliteSession(Session):
         self._db_files = db_files
 
     def get_db_file(self, id=None):
+        if self._db_files is None:
+            raise BlobsNotSupported
         if id is None:
-            import random, string, StringIO
             while True:
-                id = random.randint(1, 10**6)
+                id = random.randint(1, 10 ** 6)
                 if id not in self._db_files:
                     break
             self._db_files[id] = StringIO.StringIO()
@@ -439,6 +450,27 @@ class SqliteSession(Session):
             table._drop()
         self._conn.commit()
         self._db_files.clear()
+
+
+class SqliteDB(object):
+
+    def __init__(self, uri, schema):
+        import sqlite3
+        self._connect = lambda: sqlite3.connect(uri)
+        if uri == ':memory:':
+            _single_connection = self._connect()
+            self._connect = lambda: _single_connection
+            self.put_session = lambda session: None
+            self._files = {}
+        else:
+            self._files = None
+        self.schema = schema
+
+    def get_session(self):
+        return SqliteSession(self.schema, self._connect(), self._files)
+
+    def put_session(self, session):
+        session._release_conn().close()
 
 
 def transform_connection_uri(connection_uri):

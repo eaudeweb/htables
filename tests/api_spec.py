@@ -1,19 +1,25 @@
 from __future__ import with_statement
 import unittest2 as unittest
-from contextlib import contextmanager
 from StringIO import StringIO
+from contextlib import contextmanager
 import warnings
-from mock import Mock, call
 
 
-def setUpModule(self):
-    import htables; self.htables = htables
-    self.json = htables.json
-    self.schema = htables.Schema()
-    self.PersonRow = self.schema.define_table('PersonRow', 'person')
+def create_schema():
+    import htables
+    schema = htables.Schema()
+    schema.define_table('PersonRow', 'person')
+    return schema
 
 
 class _HTablesApiTest(unittest.TestCase):
+
+    def _pre_setup(self):
+        self.schema = create_schema()
+
+    def __call__(self, result=None):
+        self._pre_setup()
+        super(_HTablesApiTest, self).__call__(result)
 
     def _unpack_data(self, value):
         return value
@@ -56,7 +62,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     def test_load_not_found(self):
         with self.db_session() as session:
-            with self.assertRaises(KeyError) as e:
+            with self.assertRaises(KeyError):
                 session['person'].get(13)
 
     def test_load_all(self):
@@ -80,10 +86,10 @@ class _HTablesApiTest(unittest.TestCase):
 
         with self.db_session() as session:
             person = session['person'].get(1)
-            del person["k1"] # remove value
-            person["k2"] = "vX" # change value
+            del person["k1"]  # remove value
+            person["k2"] = "vX"  # change value
             # person["k3"] unchanged
-            person["k4"] = "v4" # add value
+            person["k4"] = "v4"  # add value
             person.save()
             session.commit()
 
@@ -207,7 +213,6 @@ class _HTablesApiTest(unittest.TestCase):
             table.new(name='one', color='blue').save()
             table.new(name='two', color='red').save()
             table.new(name='three', color='red').save()
-            row2 = table.get(2)
             self.assertRaises(ValueError, table.find_single, color='red')
 
     def test_find_single_with_no_results(self):
@@ -232,7 +237,7 @@ class _HTablesApiTest(unittest.TestCase):
         with self.db_session() as session:
             db_file = session.get_db_file(13)
             with self.assertRaises(psycopg2.OperationalError):
-                data = ''.join(db_file.iter_data())
+                ''.join(db_file.iter_data())
 
         with self.db_session() as session:
             db_file = session.get_db_file(13)
@@ -273,7 +278,7 @@ class _HTablesApiTest(unittest.TestCase):
 
     @contextmanager
     def expect_one_warning(self):
-        if not hasattr(warnings, 'catch_warnings'): # python < 2.6
+        if not hasattr(warnings, 'catch_warnings'):  # python < 2.6
             from nose import SkipTest
             raise SkipTest
         with warnings.catch_warnings(record=True) as warn_log:
@@ -308,108 +313,7 @@ class _HTablesApiTest(unittest.TestCase):
                 session['person'].get_all()
 
     def test_deprecation_session_table(self):
+        PersonRow = self.schema['person']
         with self.db_session() as session:
             with self.expect_one_warning():
                 session.table(PersonRow)
-
-
-class PostgresqlTest(_HTablesApiTest):
-
-    CONNECTION_URI = 'postgresql://localhost/htables_test'
-
-    def setUp(self):
-        with self.db_session() as session:
-            session.create_all()
-
-    def tearDown(self):
-        with self.db_session() as session:
-            session.drop_all()
-
-    @contextmanager
-    def db_session(self):
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
-        session = session_pool.get_session()
-        try:
-            yield session
-        finally:
-            session_pool.put_session(session)
-
-
-def insert_spy(obj, attr_name):
-    original_callable = getattr(obj, attr_name)
-    spy = Mock(side_effect=original_callable)
-    setattr(obj, attr_name, spy)
-    return spy
-
-
-class PostgresqlSessionTest(unittest.TestCase):
-
-    CONNECTION_URI = PostgresqlTest.CONNECTION_URI
-
-    def _get_session_pool(self):
-        return schema.bind(self.CONNECTION_URI, debug=True)
-
-    def test_use_expired_connection(self):
-        session_pool = self._get_session_pool()
-        session = session_pool.get_session()
-        session_pool.put_session(session)
-        self.assertRaises(ValueError, session.commit)
-
-    def test_lazy_session_does_not_initially_fetch_connection(self):
-        session_pool = self._get_session_pool()
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
-        spy = insert_spy(session_pool._conn_pool, 'getconn')
-        session = session_pool.get_session(lazy=True)
-        self.assertEqual(spy.mock_calls, [])
-
-    def test_lazy_session_eventually_asks_for_connection(self):
-        session_pool = self._get_session_pool()
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
-        spy = insert_spy(session_pool._conn_pool, 'getconn')
-        session = session_pool.get_session(lazy=True)
-        session.commit()
-        self.assertEqual(spy.mock_calls, [call()])
-        self.addCleanup(session_pool.put_session, session)
-
-    def test_lazy_session_with_no_connection_is_returned_ok(self):
-        session_pool = self._get_session_pool()
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
-        spy = insert_spy(session_pool._conn_pool, 'putconn')
-        session = session_pool.get_session(lazy=True)
-        session_pool.put_session(session)
-        self.assertEqual(spy.mock_calls, [])
-
-    def test_lazy_session_with_connection_puts_connection_back(self):
-        session_pool = self._get_session_pool()
-        session_pool = schema.bind(self.CONNECTION_URI, debug=True)
-        spy = insert_spy(session_pool._conn_pool, 'putconn')
-        session = session_pool.get_session(lazy=True)
-        session.commit()
-        conn = session._conn
-        session_pool.put_session(session)
-        self.assertEqual(spy.mock_calls, [call(conn)])
-
-
-class SqliteTest(_HTablesApiTest):
-
-    def setUp(self):
-        super(SqliteTest, self).setUp()
-        import sqlite3
-        self.conn = sqlite3.connect(':memory:')
-        self.db_files = {}
-
-    @contextmanager
-    def db_session(self):
-        sqlite_session = htables.SqliteSession(schema, self.conn, self.db_files)
-        sqlite_session.create_all()
-        yield sqlite_session
-
-    def _unpack_data(self, value):
-        return json.loads(value)
-
-    def _count_large_files(self, session):
-        return len(self.db_files)
-
-    def test_large_file_error(self):
-        from nose import SkipTest
-        raise SkipTest
