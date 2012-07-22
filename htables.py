@@ -270,13 +270,14 @@ class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
     ``data`` (hstore). """
 
-    def __init__(self, row_cls, session):
+    def __init__(self, row_cls, dialect_cls, session):
         self._session = session
+        self._dialect_cls = dialect_cls
         self._row_cls = row_cls
         self._name = row_cls._table
 
     def _dialect(self):
-        return PostgresqlDialect(self._session.conn)
+        return self._dialect_cls(self._session.conn)
 
     def create_table(self):
         return self._dialect().create_table(self._name)
@@ -399,7 +400,7 @@ class Session(object):
     commit/rollback transactions. """
 
     _debug = False
-    _table_cls = Table
+    _dialect_cls = PostgresqlDialect
 
     def __init__(self, schema, conn, debug=False):
         self._schema = schema
@@ -446,7 +447,7 @@ class Session(object):
         else:
             raise ValueError("Can't determine table type from %r" %
                              (obj_or_cls,))
-        return self._table_cls(row_cls, self)
+        return Table(row_cls, self._dialect_cls, self)
 
     def table(self, obj_or_cls):
         msg = ("Session.table(RowCls) is deprecated; use "
@@ -506,15 +507,9 @@ class SqliteDbFile(object):
         return iter([self._data.getvalue()])
 
 
-class SqliteTable(Table):
-
-    def _dialect(self):
-        return SqliteDialect(self._session.conn)
-
-
 class SqliteSession(Session):
 
-    _table_cls = SqliteTable
+    _dialect_cls = SqliteDialect
 
     def __init__(self, schema, conn, db_files, debug=False):
         super(SqliteSession, self).__init__(schema, conn, debug)
