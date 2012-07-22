@@ -242,6 +242,16 @@ class SqliteDialect(object):
     def drop_table(self, name):
         self.execute("DROP TABLE IF EXISTS " + name)
 
+    def select_by_id(self, name, obj_id):
+        cursor = self.execute("SELECT data FROM " + name +
+                               " WHERE id = ?",
+                               (obj_id,))
+        return [(json.loads(r[0]),) for r in cursor]
+
+    def select_all(self, name):
+        cursor = self.execute("SELECT id, data FROM " + name)
+        return ((id, json.loads(data)) for (id, data) in cursor)
+
 
 class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
@@ -499,16 +509,6 @@ class SqliteTable(Table):
                                " (data) VALUES (?)",
                                (json.dumps(obj),))
         return cursor.lastrowid
-
-    def _select_by_id(self, obj_id):
-        cursor = self._execute("SELECT data FROM " + self._name +
-                               " WHERE id = ?",
-                               (obj_id,))
-        return [(json.loads(r[0]),) for r in cursor]
-
-    def _select_all(self):
-        cursor = self._execute("SELECT id, data FROM " + self._name)
-        return ((id, json.loads(data)) for (id, data) in cursor)
 
     def _update(self, obj_id, obj):
         self._execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
