@@ -7,10 +7,27 @@ from common import TestCase
 
 class _HTablesApiTest(TestCase):
 
+    @contextmanager
+    def db_session(self):
+        session = self.db.get_session()
+        try:
+            yield session
+        finally:
+            self.db.put_session(session)
+
     def preSetUp(self):
         super(_HTablesApiTest, self).preSetUp()
         import htables
         self.schema = htables.Schema(['person'])
+        self.db = self.create_db()
+        with self.db_session() as session:
+            session.create_all()
+
+        def drop_all_tables():
+            with self.db_session() as session:
+                session.drop_all()
+
+        self.addCleanup(drop_all_tables)
 
     def _unpack_data(self, value):
         return value
