@@ -178,6 +178,14 @@ class PostgresqlDialect(object):
             raise
         return cursor
 
+    def create_table(self, name):
+        self.execute("CREATE TABLE IF NOT EXISTS " + name + " ("
+                     "id SERIAL PRIMARY KEY, "
+                     "data HSTORE)")
+
+    def drop_table(self, name):
+        self.execute("DROP TABLE IF EXISTS " + name)
+
 
 class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
@@ -195,12 +203,10 @@ class Table(object):
         return self._dialect().execute(*args, **kwargs)
 
     def create_table(self):
-        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                      "id SERIAL PRIMARY KEY, "
-                      "data HSTORE)")
+        return self._dialect().create_table(self._name)
 
     def drop_table(self):
-        self._execute("DROP TABLE IF EXISTS " + self._name)
+        return self._dialect().drop_table(self._name)
 
     def _insert(self, obj):
         cursor = self._execute("INSERT INTO " + self._name +
