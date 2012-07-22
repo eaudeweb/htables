@@ -156,19 +156,15 @@ class Schema(object):
         return PostgresqlDB(connection_uri, self, debug)
 
 
-class Table(object):
-    """ A database table with two columns: ``id`` (integer primary key) and
-    ``data`` (hstore). """
+class PostgresqlDialect(object):
 
     _missing_table_pattern = re.compile(r'^relation "([^"]+)" does not exist')
 
-    def __init__(self, row_cls, session):
-        self._session = session
-        self._row_cls = row_cls
-        self._name = row_cls._table
+    def __init__(self, conn):
+        self.conn = conn
 
-    def _execute(self, *args, **kwargs):
-        cursor = kwargs.get('cursor') or self._session.conn.cursor()
+    def execute(self, *args, **kwargs):
+        cursor = kwargs.get('cursor') or self.conn.cursor()
         try:
             cursor.execute(*args)
         except Exception, e:
@@ -181,6 +177,22 @@ class Table(object):
                         raise MissingTable(name)
             raise
         return cursor
+
+
+class Table(object):
+    """ A database table with two columns: ``id`` (integer primary key) and
+    ``data`` (hstore). """
+
+    def __init__(self, row_cls, session):
+        self._session = session
+        self._row_cls = row_cls
+        self._name = row_cls._table
+
+    def _dialect(self):
+        return PostgresqlDialect(self._session.conn)
+
+    def _execute(self, *args, **kwargs):
+        return self._dialect().execute(*args, **kwargs)
 
     def create_table(self):
         self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
