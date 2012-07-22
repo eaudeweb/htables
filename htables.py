@@ -8,8 +8,6 @@ import StringIO
 import warnings
 import re
 from contextlib import contextmanager
-import psycopg2.pool
-import psycopg2.extras
 
 
 class BlobsNotSupported(Exception):
@@ -97,6 +95,9 @@ class PostgresqlDB(object):
     """ A pool of reusable database connections that get created on demand. """
 
     def __init__(self, connection_uri, schema, debug=False):
+        global psycopg2
+        import psycopg2.pool
+        import psycopg2.extras
         self._schema = schema
         params = transform_connection_uri(connection_uri)
         self._conn_pool = psycopg2.pool.ThreadedConnectionPool(0, 5, **params)
