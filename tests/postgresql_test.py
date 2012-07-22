@@ -2,7 +2,7 @@ from __future__ import with_statement
 import unittest2 as unittest
 from contextlib import contextmanager
 from mock import Mock, call
-from api_spec import create_schema, _HTablesApiTest
+from api_spec import _HTablesApiTest
 
 
 CONNECTION_URI = 'postgresql://localhost/htables_test'
@@ -38,12 +38,10 @@ def insert_spy(obj, attr_name):
 
 class PostgresqlSessionTest(unittest.TestCase):
 
-    def setUp(self):
-        self.schema = create_schema()
-
     def get_db(self):
         import htables
-        return htables.PostgresqlDB(CONNECTION_URI, self.schema, debug=True)
+        schema = htables.Schema(['person'])
+        return htables.PostgresqlDB(CONNECTION_URI, schema, debug=True)
 
     def test_use_expired_connection(self):
         db = self.get_db()

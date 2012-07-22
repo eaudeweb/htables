@@ -1,25 +1,16 @@
 from __future__ import with_statement
-import unittest2 as unittest
 from StringIO import StringIO
 from contextlib import contextmanager
 import warnings
+from common import TestCase
 
 
-def create_schema():
-    import htables
-    schema = htables.Schema()
-    schema.define_table('PersonRow', 'person')
-    return schema
+class _HTablesApiTest(TestCase):
 
-
-class _HTablesApiTest(unittest.TestCase):
-
-    def _pre_setup(self):
-        self.schema = create_schema()
-
-    def __call__(self, result=None):
-        self._pre_setup()
-        super(_HTablesApiTest, self).__call__(result)
+    def preSetUp(self):
+        super(_HTablesApiTest, self).preSetUp()
+        import htables
+        self.schema = htables.Schema(['person'])
 
     def _unpack_data(self, value):
         return value

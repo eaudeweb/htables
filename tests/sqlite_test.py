@@ -1,11 +1,9 @@
 from __future__ import with_statement
-import unittest2 as unittest
 from contextlib import contextmanager
 import sqlite3
-import tempfile
 import simplejson as json
-from path import path
-from api_spec import _HTablesApiTest, create_schema
+from common import TestCase
+from api_spec import _HTablesApiTest
 
 
 @contextmanager
@@ -40,10 +38,11 @@ class SqliteTest(_HTablesApiTest):
         raise SkipTest
 
 
-class SqliteSessionTest(unittest.TestCase):
+class SqliteSessionTest(TestCase):
 
     def setUp(self):
-        self.schema = create_schema()
+        import htables
+        self.schema = htables.Schema(['person'])
 
     def assert_consecutive_sessions_access_same_database(self, db):
         with db_session(db) as session:
@@ -61,9 +60,8 @@ class SqliteSessionTest(unittest.TestCase):
 
     def create_filesystem_db(self):
         import htables
-        self.tmp = path(tempfile.mkdtemp())
-        self.addCleanup(self.tmp.rmtree)
-        return htables.SqliteDB(self.tmp / 'db.sqlite', schema=self.schema)
+        db_path = self.tmpdir() / 'db.sqlite'
+        return htables.SqliteDB(db_path, schema=self.schema)
 
     def test_filesystem_consecutive_access(self):
         db = self.create_filesystem_db()
