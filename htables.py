@@ -204,6 +204,13 @@ class PostgresqlDialect(object):
     def select_all(self, name):
         return self.execute("SELECT id, data FROM " + name)
 
+    def update(self, name, obj_id, obj):
+        self.execute("UPDATE " + name + " SET data = %s WHERE id = %s",
+                     (obj, obj_id))
+
+    def delete(self, name, obj_id):
+        self.execute("DELETE FROM " + name + " WHERE id = %s", (obj_id,))
+
 
 class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
@@ -236,12 +243,10 @@ class Table(object):
         return self._dialect().select_all(self._name)
 
     def _update(self, obj_id, obj):
-        self._execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
-                      (obj, obj_id))
+        return self._dialect().update(self._name, obj_id, obj)
 
     def _delete(self, obj_id):
-        self._execute("DELETE FROM " + self._name + " WHERE id = %s",
-                      (obj_id,))
+        return self._dialect().delete(self._name, obj_id)
 
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
