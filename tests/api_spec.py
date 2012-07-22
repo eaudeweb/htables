@@ -52,8 +52,9 @@ class _HTablesApiTest(TestCase):
             self.assertEqual(person, {"hello": "world"})
 
     def test_load_not_found(self):
+        from htables import RowNotFound
         with self.db_session() as session:
-            with self.assertRaises(KeyError):
+            with self.assertRaises(RowNotFound):
                 session['person'].get(13)
 
     def test_load_all(self):
@@ -186,9 +187,10 @@ class _HTablesApiTest(TestCase):
             self.assertEqual(table.find_first(color='red'), row2)
 
     def test_find_first_no_results(self):
+        from htables import RowNotFound
         with self.db_session() as session:
             table = session['person']
-            self.assertRaises(KeyError, table.find_first, color='red')
+            self.assertRaises(RowNotFound, table.find_first, color='red')
 
     def test_find_single(self):
         with self.db_session() as session:
@@ -199,17 +201,20 @@ class _HTablesApiTest(TestCase):
             self.assertEqual(table.find_single(color='red'), row2)
 
     def test_find_single_with_more_results(self):
+        from htables import MultipleRowsFound
         with self.db_session() as session:
             table = session['person']
             table.new(name='one', color='blue').save()
             table.new(name='two', color='red').save()
             table.new(name='three', color='red').save()
-            self.assertRaises(ValueError, table.find_single, color='red')
+            self.assertRaises(MultipleRowsFound,
+                              table.find_single, color='red')
 
     def test_find_single_with_no_results(self):
+        from htables import RowNotFound
         with self.db_session() as session:
             table = session['person']
-            self.assertRaises(KeyError, table.find_single, color='red')
+            self.assertRaises(RowNotFound, table.find_single, color='red')
 
     def test_large_file(self):
         with self.db_session() as session:
@@ -266,6 +271,14 @@ class _HTablesApiTest(TestCase):
     def test_table_access_bad_name(self):
         with self.db_session() as session:
             self.assertRaises(KeyError, lambda: session['no-such-table'])
+
+    def test_table_access_with_missing_sql_table_raises_exception(self):
+        from htables import MissingTable
+        self.schema.define_table('foo', 'foo')
+        with self.db_session() as session:
+            table = session['foo']
+            with self.assertRaisesRegexp(MissingTable, r'^foo$') as e:
+                table.new()
 
     @contextmanager
     def expect_one_warning(self):

@@ -47,7 +47,7 @@ class PostgresqlSessionTest(unittest.TestCase):
         db = self.get_db()
         session = db.get_session()
         db.put_session(session)
-        self.assertRaises(ValueError, session.commit)
+        self.assertRaises(RuntimeError, session.commit)
 
     def test_lazy_session_does_not_initially_fetch_connection(self):
         db = self.get_db()

@@ -6,12 +6,27 @@ except ImportError:
 import random
 import StringIO
 import warnings
+import re
 import psycopg2.pool
 import psycopg2.extras
 
 
 class BlobsNotSupported(Exception):
     """ This database does not support blobs. """
+
+
+class RowNotFound(KeyError):
+    """ No row matching search criteria. """
+    # TODO don't subclass from KeyError
+
+
+class MultipleRowsFound(ValueError):
+    """ Multiple rows matching search critera. """
+    # TODO don't subclass ValueError
+
+
+class MissingTable(RuntimeError):
+    """ Table missing from database. """
 
 
 COPY_BUFFER_SIZE = 2 ** 14
@@ -145,49 +160,61 @@ class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
     ``data`` (hstore). """
 
+    _missing_table_pattern = re.compile(r'^relation "([^"]+)" does not exist')
+
     def __init__(self, row_cls, session):
         self._session = session
         self._row_cls = row_cls
         self._name = row_cls._table
 
+    def _execute(self, *args, **kwargs):
+        cursor = kwargs.get('cursor') or self._session.conn.cursor()
+        try:
+            cursor.execute(*args)
+        except Exception, e:
+            from psycopg2 import ProgrammingError
+            if isinstance(e, ProgrammingError):
+                if e.args:
+                    m = self._missing_table_pattern.match(e.args[0])
+                    if m is not None:
+                        name = m.group(1)
+                        raise MissingTable(name)
+            raise
+        return cursor
+
     def _create(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                            "id SERIAL PRIMARY KEY, "
-                            "data HSTORE)")
+        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
+                      "id SERIAL PRIMARY KEY, "
+                      "data HSTORE)")
 
     def _drop(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS " + self._name)
+        self._execute("DROP TABLE IF EXISTS " + self._name)
 
     def _insert(self, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (%s)",
-                       (obj,))
-        cursor.execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',))
+        cursor = self._execute("INSERT INTO " + self._name +
+                               " (data) VALUES (%s)",
+                               (obj,))
+        self._execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',),
+                      cursor=cursor)
         [(last_insert_id,)] = list(cursor)
         return last_insert_id
 
     def _select_by_id(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT data FROM " + self._name + " WHERE id = %s",
-                       (obj_id,))
+        cursor = self._execute("SELECT data FROM " + self._name +
+                               " WHERE id = %s",
+                               (obj_id,))
         return list(cursor)
 
     def _select_all(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT id, data FROM " + self._name)
-        return cursor
+        return self._execute("SELECT id, data FROM " + self._name)
 
     def _update(self, obj_id, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
-                       (obj, obj_id))
+        self._execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
+                      (obj, obj_id))
 
     def _delete(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = %s",
-                       (obj_id,))
+        self._execute("DELETE FROM " + self._name + " WHERE id = %s",
+                      (obj_id,))
 
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
@@ -223,7 +250,7 @@ class Table(object):
 
         rows = self._select_by_id(obj_id)
         if len(rows) == 0:
-            raise KeyError("No %r with id=%d" % (self._row_cls, obj_id))
+            raise RowNotFound("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
         return self._row(obj_id, data)
 
@@ -251,31 +278,31 @@ class Table(object):
 
     def find_first(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
-        Raises `KeyError` if no result is found. """
+        Raises `RowNotFound` if no result is found. """
 
         for row in self.find(**kwargs):
             return row
         else:
-            raise KeyError
+            raise RowNotFound
 
     def find_single(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
-        Raises `KeyError` if no result is found. Raises `ValueError` if more
-        than one result is found. """
+        Raises `RowNotFound` if no result is found. Raises `MultipleRowsFound`
+        if more than one result is found. """
 
         results = iter(self.find(**kwargs))
 
         try:
             row = results.next()
         except StopIteration:
-            raise KeyError
+            raise RowNotFound
 
         try:
             results.next()
         except StopIteration:
             pass
         else:
-            raise ValueError("More than one row found")
+            raise MultipleRowsFound("More than one row found")
 
         return row
 
@@ -298,7 +325,7 @@ class Session(object):
     @property
     def conn(self):
         if self._conn is _expired:
-            raise ValueError("Error: trying to use expired database session")
+            raise RuntimeError("Error: trying to use expired database session")
         elif self._conn is _lazy:
             self._conn = self._pool._get_connection()
         return self._conn
@@ -393,38 +420,51 @@ class SqliteDbFile(object):
 
 class SqliteTable(Table):
 
-    def _create(self):
+    _missing_table_pattern = re.compile(r'^no such table: (.+)')
+
+    def _execute(self, *args):
         cursor = self._session.conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                            "id INTEGER PRIMARY KEY, "
-                            "data BLOB)")
+        try:
+            cursor.execute(*args)
+        except Exception, e:
+            import sqlite3
+            if isinstance(e, sqlite3.OperationalError):
+                if e.args:
+                    m = self._missing_table_pattern.match(e.args[0])
+                    if m is not None:
+                        name = m.group(1)
+                        raise MissingTable(name)
+            raise
+        return cursor
+
+    def _create(self):
+        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
+                      "id INTEGER PRIMARY KEY, "
+                      "data BLOB)")
 
     def _insert(self, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("INSERT INTO " + self._name + " (data) VALUES (?)",
-                       (json.dumps(obj),))
+        cursor = self._execute("INSERT INTO " + self._name +
+                               " (data) VALUES (?)",
+                               (json.dumps(obj),))
         return cursor.lastrowid
 
     def _select_by_id(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT data FROM " + self._name + " WHERE id = ?",
-                       (obj_id,))
+        cursor = self._execute("SELECT data FROM " + self._name +
+                               " WHERE id = ?",
+                               (obj_id,))
         return [(json.loads(r[0]),) for r in cursor]
 
     def _select_all(self):
-        cursor = self._session.conn.cursor()
-        cursor.execute("SELECT id, data FROM " + self._name)
+        cursor = self._execute("SELECT id, data FROM " + self._name)
         return ((id, json.loads(data)) for (id, data) in cursor)
 
     def _update(self, obj_id, obj):
-        cursor = self._session.conn.cursor()
-        cursor.execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
-                       (json.dumps(obj), obj_id))
+        self._execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
+                      (json.dumps(obj), obj_id))
 
     def _delete(self, obj_id):
-        cursor = self._session.conn.cursor()
-        cursor.execute("DELETE FROM " + self._name + " WHERE id = ?",
-                       (obj_id,))
+        self._execute("DELETE FROM " + self._name + " WHERE id = ?",
+                      (obj_id,))
 
 
 class SqliteSession(Session):
