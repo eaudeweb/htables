@@ -156,19 +156,15 @@ class Schema(object):
         return PostgresqlDB(connection_uri, self, debug)
 
 
-class Table(object):
-    """ A database table with two columns: ``id`` (integer primary key) and
-    ``data`` (hstore). """
+class PostgresqlDialect(object):
 
     _missing_table_pattern = re.compile(r'^relation "([^"]+)" does not exist')
 
-    def __init__(self, row_cls, session):
-        self._session = session
-        self._row_cls = row_cls
-        self._name = row_cls._table
+    def __init__(self, conn):
+        self.conn = conn
 
-    def _execute(self, *args, **kwargs):
-        cursor = kwargs.get('cursor') or self._session.conn.cursor()
+    def execute(self, *args, **kwargs):
+        cursor = kwargs.get('cursor') or self.conn.cursor()
         try:
             cursor.execute(*args)
         except Exception, e:
@@ -182,39 +178,112 @@ class Table(object):
             raise
         return cursor
 
-    def create_table(self):
-        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                      "id SERIAL PRIMARY KEY, "
-                      "data HSTORE)")
+    def create_table(self, name):
+        self.execute("CREATE TABLE IF NOT EXISTS " + name + " ("
+                     "id SERIAL PRIMARY KEY, "
+                     "data HSTORE)")
 
-    def drop_table(self):
-        self._execute("DROP TABLE IF EXISTS " + self._name)
+    def drop_table(self, name):
+        self.execute("DROP TABLE IF EXISTS " + name)
 
-    def _insert(self, obj):
-        cursor = self._execute("INSERT INTO " + self._name +
-                               " (data) VALUES (%s)",
-                               (obj,))
-        self._execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',),
-                      cursor=cursor)
+    def insert(self, name, obj):
+        cursor = self.execute("INSERT INTO " + name +
+                              " (data) VALUES (%s)",
+                              (obj,))
+        self.execute("SELECT CURRVAL(%s)", (name + '_id_seq',),
+                     cursor=cursor)
         [(last_insert_id,)] = list(cursor)
         return last_insert_id
 
-    def _select_by_id(self, obj_id):
-        cursor = self._execute("SELECT data FROM " + self._name +
-                               " WHERE id = %s",
-                               (obj_id,))
+    def select_by_id(self, name, obj_id):
+        cursor = self.execute("SELECT data FROM " + name +
+                              " WHERE id = %s",
+                              (obj_id,))
         return list(cursor)
 
-    def _select_all(self):
-        return self._execute("SELECT id, data FROM " + self._name)
+    def select_all(self, name):
+        return self.execute("SELECT id, data FROM " + name)
 
-    def _update(self, obj_id, obj):
-        self._execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
-                      (obj, obj_id))
+    def update(self, name, obj_id, obj):
+        self.execute("UPDATE " + name + " SET data = %s WHERE id = %s",
+                     (obj, obj_id))
 
-    def _delete(self, obj_id):
-        self._execute("DELETE FROM " + self._name + " WHERE id = %s",
-                      (obj_id,))
+    def delete(self, name, obj_id):
+        self.execute("DELETE FROM " + name + " WHERE id = %s", (obj_id,))
+
+
+class SqliteDialect(object):
+
+    _missing_table_pattern = re.compile(r'^no such table: (.+)')
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    def execute(self, *args):
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute(*args)
+        except Exception, e:
+            import sqlite3
+            if isinstance(e, sqlite3.OperationalError):
+                if e.args:
+                    m = self._missing_table_pattern.match(e.args[0])
+                    if m is not None:
+                        name = m.group(1)
+                        raise MissingTable(name)
+            raise
+        return cursor
+
+    def create_table(self, name):
+        self.execute("CREATE TABLE IF NOT EXISTS " + name + " ("
+                     "id INTEGER PRIMARY KEY, "
+                     "data BLOB)")
+
+    def drop_table(self, name):
+        self.execute("DROP TABLE IF EXISTS " + name)
+
+    def select_by_id(self, name, obj_id):
+        cursor = self.execute("SELECT data FROM " + name +
+                               " WHERE id = ?",
+                               (obj_id,))
+        return [(json.loads(r[0]),) for r in cursor]
+
+    def select_all(self, name):
+        cursor = self.execute("SELECT id, data FROM " + name)
+        return ((id, json.loads(data)) for (id, data) in cursor)
+
+    def insert(self, name, obj):
+        cursor = self.execute("INSERT INTO " + name +
+                              " (data) VALUES (?)",
+                              (json.dumps(obj),))
+        return cursor.lastrowid
+
+    def update(self, name, obj_id, obj):
+        self.execute("UPDATE " + name + " SET data = ? WHERE id = ?",
+                     (json.dumps(obj), obj_id))
+
+    def delete(self, name, obj_id):
+        self.execute("DELETE FROM " + name + " WHERE id = ?", (obj_id,))
+
+
+class Table(object):
+    """ A database table with two columns: ``id`` (integer primary key) and
+    ``data`` (hstore). """
+
+    def __init__(self, row_cls, session):
+        self._session = session
+        self._row_cls = row_cls
+        self._name = row_cls._table
+
+    @property
+    def sql(self):
+        return self._session.sql
+
+    def create_table(self):
+        return self.sql.create_table(self._name)
+
+    def drop_table(self):
+        return self.sql.drop_table(self._name)
 
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
@@ -241,14 +310,14 @@ class Table(object):
                 assert isinstance(value, basestring), \
                     "Value %r for key %r is not a string" % (value, key)
         if obj.id is None:
-            obj.id = self._insert(obj)
+            obj.id = self.sql.insert(self._name, obj)
         else:
-            self._update(obj.id, obj)
+            self.sql.update(self._name, obj.id, obj)
 
     def get(self, obj_id):
         """ Fetches the :class:`TableRow` with the given `id`. """
 
-        rows = self._select_by_id(obj_id)
+        rows = self.sql.select_by_id(self._name, obj_id)
         if len(rows) == 0:
             raise RowNotFound("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
@@ -259,7 +328,7 @@ class Table(object):
             msg = "Table.delete(row) is deprecated; use row.delete() instead."
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         assert isinstance(obj_id, (int, long))
-        self._delete(obj_id)
+        self.sql.delete(self._name, obj_id)
 
     def get_all(self, _deprecation_warning=True):
         if _deprecation_warning:
@@ -271,7 +340,7 @@ class Table(object):
         """ Returns an iterator over all matching :class:`TableRow`
         objects. """
 
-        for ob_id, ob_data in self._select_all():
+        for ob_id, ob_data in self.sql.select_all(self._name):
             row = self._row(ob_id, ob_data)
             if all(row[k] == kwargs[k] for k in kwargs):
                 yield row
@@ -316,7 +385,7 @@ class Session(object):
     commit/rollback transactions. """
 
     _debug = False
-    _table_cls = Table
+    _dialect_cls = PostgresqlDialect
 
     def __init__(self, schema, conn, debug=False):
         self._schema = schema
@@ -329,6 +398,10 @@ class Session(object):
         elif self._conn is _lazy:
             self._conn = self._pool._get_connection()
         return self._conn
+
+    @property
+    def sql(self):
+        return self._dialect_cls(self.conn)
 
     def _release_conn(self):
         conn = self._conn
@@ -363,7 +436,7 @@ class Session(object):
         else:
             raise ValueError("Can't determine table type from %r" %
                              (obj_or_cls,))
-        return self._table_cls(row_cls, self)
+        return Table(row_cls, self)
 
     def table(self, obj_or_cls):
         msg = ("Session.table(RowCls) is deprecated; use "
@@ -423,58 +496,9 @@ class SqliteDbFile(object):
         return iter([self._data.getvalue()])
 
 
-class SqliteTable(Table):
-
-    _missing_table_pattern = re.compile(r'^no such table: (.+)')
-
-    def _execute(self, *args):
-        cursor = self._session.conn.cursor()
-        try:
-            cursor.execute(*args)
-        except Exception, e:
-            import sqlite3
-            if isinstance(e, sqlite3.OperationalError):
-                if e.args:
-                    m = self._missing_table_pattern.match(e.args[0])
-                    if m is not None:
-                        name = m.group(1)
-                        raise MissingTable(name)
-            raise
-        return cursor
-
-    def create_table(self):
-        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                      "id INTEGER PRIMARY KEY, "
-                      "data BLOB)")
-
-    def _insert(self, obj):
-        cursor = self._execute("INSERT INTO " + self._name +
-                               " (data) VALUES (?)",
-                               (json.dumps(obj),))
-        return cursor.lastrowid
-
-    def _select_by_id(self, obj_id):
-        cursor = self._execute("SELECT data FROM " + self._name +
-                               " WHERE id = ?",
-                               (obj_id,))
-        return [(json.loads(r[0]),) for r in cursor]
-
-    def _select_all(self):
-        cursor = self._execute("SELECT id, data FROM " + self._name)
-        return ((id, json.loads(data)) for (id, data) in cursor)
-
-    def _update(self, obj_id, obj):
-        self._execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
-                      (json.dumps(obj), obj_id))
-
-    def _delete(self, obj_id):
-        self._execute("DELETE FROM " + self._name + " WHERE id = ?",
-                      (obj_id,))
-
-
 class SqliteSession(Session):
 
-    _table_cls = SqliteTable
+    _dialect_cls = SqliteDialect
 
     def __init__(self, schema, conn, db_files, debug=False):
         super(SqliteSession, self).__init__(schema, conn, debug)
