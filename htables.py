@@ -252,6 +252,19 @@ class SqliteDialect(object):
         cursor = self.execute("SELECT id, data FROM " + name)
         return ((id, json.loads(data)) for (id, data) in cursor)
 
+    def insert(self, name, obj):
+        cursor = self.execute("INSERT INTO " + name +
+                              " (data) VALUES (?)",
+                              (json.dumps(obj),))
+        return cursor.lastrowid
+
+    def update(self, name, obj_id, obj):
+        self.execute("UPDATE " + name + " SET data = ? WHERE id = ?",
+                     (json.dumps(obj), obj_id))
+
+    def delete(self, name, obj_id):
+        self.execute("DELETE FROM " + name + " WHERE id = ?", (obj_id,))
+
 
 class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
@@ -503,20 +516,6 @@ class SqliteTable(Table):
 
     def _execute(self, *args):
         return self._dialect().execute(*args)
-
-    def _insert(self, obj):
-        cursor = self._execute("INSERT INTO " + self._name +
-                               " (data) VALUES (?)",
-                               (json.dumps(obj),))
-        return cursor.lastrowid
-
-    def _update(self, obj_id, obj):
-        self._execute("UPDATE " + self._name + " SET data = ? WHERE id = ?",
-                      (json.dumps(obj), obj_id))
-
-    def _delete(self, obj_id):
-        self._execute("DELETE FROM " + self._name + " WHERE id = ?",
-                      (obj_id,))
 
 
 class SqliteSession(Session):
