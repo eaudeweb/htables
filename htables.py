@@ -182,12 +182,12 @@ class Table(object):
             raise
         return cursor
 
-    def _create(self):
+    def create_table(self):
         self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
                       "id SERIAL PRIMARY KEY, "
                       "data HSTORE)")
 
-    def _drop(self):
+    def drop_table(self):
         self._execute("DROP TABLE IF EXISTS " + self._name)
 
     def _insert(self, obj):
@@ -377,7 +377,12 @@ class Session(object):
 
     def __getitem__(self, name):
         """ Get the :class:`Table` called `name`. """
-        return self._table_for_cls(self._schema[name])
+        try:
+            row_cls = self._schema[name]
+        except KeyError:
+            class row_cls(TableRow):
+                _table = name
+        return self._table_for_cls(row_cls)
 
     def save(self, obj, _deprecation_warning=True):
         if _deprecation_warning:
@@ -389,14 +394,14 @@ class Session(object):
         """ Make sure all tables defined by the schema exist in the
         database. """
         for table in self._tables():
-            table._create()
+            table.create_table()
         self._conn.commit()
 
     def drop_all(self):
         """ Drop all tables defined by the schema and delete all blob
         files. """
         for table in self._tables():
-            table._drop()
+            table.drop_table()
         cursor = self.conn.cursor()
         cursor.execute("SELECT oid FROM pg_largeobject_metadata")
         for [oid] in cursor:
@@ -437,7 +442,7 @@ class SqliteTable(Table):
             raise
         return cursor
 
-    def _create(self):
+    def create_table(self):
         self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
                       "id INTEGER PRIMARY KEY, "
                       "data BLOB)")
@@ -491,7 +496,7 @@ class SqliteSession(Session):
 
     def drop_all(self):
         for table in self._tables():
-            table._drop()
+            table.drop_table()
         self._conn.commit()
         self._db_files.clear()
 

@@ -285,10 +285,6 @@ class _HTablesApiTest(TestCase):
             table = session['person']
             self.assertEqual(table.get(1), {'hello': 'world'})
 
-    def test_table_access_bad_name(self):
-        with self.db_session() as session:
-            self.assertRaises(KeyError, lambda: session['no-such-table'])
-
     def test_table_access_with_missing_sql_table_raises_exception(self):
         from htables import MissingTable
         self.schema.define_table('foo', 'foo')
@@ -296,6 +292,20 @@ class _HTablesApiTest(TestCase):
             table = session['foo']
             with self.assertRaisesRegexp(MissingTable, r'^foo$') as e:
                 table.new()
+
+    def test_newly_created_table_holds_data(self):
+        with self.db_session() as session:
+            session['foo'].create_table()
+            row = session['foo'].new()
+            self.assertEqual(row.id, 1)
+
+    def test_deleting_table_causes_exception(self):
+        import htables
+        with self.db_session() as session:
+            session['foo'].create_table()
+            session['foo'].drop_table()
+            with self.assertRaises(htables.MissingTable):
+                session['foo'].new()
 
     @contextmanager
     def expect_one_warning(self):
