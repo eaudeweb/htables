@@ -186,6 +186,24 @@ class PostgresqlDialect(object):
     def drop_table(self, name):
         self.execute("DROP TABLE IF EXISTS " + name)
 
+    def insert(self, name, obj):
+        cursor = self.execute("INSERT INTO " + name +
+                              " (data) VALUES (%s)",
+                              (obj,))
+        self.execute("SELECT CURRVAL(%s)", (name + '_id_seq',),
+                     cursor=cursor)
+        [(last_insert_id,)] = list(cursor)
+        return last_insert_id
+
+    def select_by_id(self, name, obj_id):
+        cursor = self.execute("SELECT data FROM " + name +
+                              " WHERE id = %s",
+                              (obj_id,))
+        return list(cursor)
+
+    def select_all(self, name):
+        return self.execute("SELECT id, data FROM " + name)
+
 
 class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
@@ -209,22 +227,13 @@ class Table(object):
         return self._dialect().drop_table(self._name)
 
     def _insert(self, obj):
-        cursor = self._execute("INSERT INTO " + self._name +
-                               " (data) VALUES (%s)",
-                               (obj,))
-        self._execute("SELECT CURRVAL(%s)", (self._name + '_id_seq',),
-                      cursor=cursor)
-        [(last_insert_id,)] = list(cursor)
-        return last_insert_id
+        return self._dialect().insert(self._name, obj)
 
     def _select_by_id(self, obj_id):
-        cursor = self._execute("SELECT data FROM " + self._name +
-                               " WHERE id = %s",
-                               (obj_id,))
-        return list(cursor)
+        return self._dialect().select_by_id(self._name, obj_id)
 
     def _select_all(self):
-        return self._execute("SELECT id, data FROM " + self._name)
+        return self._dialect().select_all(self._name)
 
     def _update(self, obj_id, obj):
         self._execute("UPDATE " + self._name + " SET data = %s WHERE id = %s",
