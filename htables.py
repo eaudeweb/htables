@@ -278,9 +278,6 @@ class Table(object):
     def _dialect(self):
         return PostgresqlDialect(self._session.conn)
 
-    def _execute(self, *args, **kwargs):
-        return self._dialect().execute(*args, **kwargs)
-
     def create_table(self):
         return self._dialect().create_table(self._name)
 
@@ -513,9 +510,6 @@ class SqliteTable(Table):
 
     def _dialect(self):
         return SqliteDialect(self._session.conn)
-
-    def _execute(self, *args):
-        return self._dialect().execute(*args)
 
 
 class SqliteSession(Session):
