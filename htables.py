@@ -1,4 +1,3 @@
-import re
 try:
     import simplejson as json
 except ImportError:
@@ -29,6 +28,7 @@ class MissingTable(RuntimeError):
 
 
 COPY_BUFFER_SIZE = 2 ** 14
+
 
 def _iter_file(src_file, close=False):
     try:
