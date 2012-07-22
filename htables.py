@@ -285,21 +285,6 @@ class Table(object):
     def drop_table(self):
         return self.sql.drop_table(self._name)
 
-    def _insert(self, obj):
-        return self.sql.insert(self._name, obj)
-
-    def _select_by_id(self, obj_id):
-        return self.sql.select_by_id(self._name, obj_id)
-
-    def _select_all(self):
-        return self.sql.select_all(self._name)
-
-    def _update(self, obj_id, obj):
-        return self.sql.update(self._name, obj_id, obj)
-
-    def _delete(self, obj_id):
-        return self.sql.delete(self._name, obj_id)
-
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
         ob.id = id
@@ -325,14 +310,14 @@ class Table(object):
                 assert isinstance(value, basestring), \
                     "Value %r for key %r is not a string" % (value, key)
         if obj.id is None:
-            obj.id = self._insert(obj)
+            obj.id = self.sql.insert(self._name, obj)
         else:
-            self._update(obj.id, obj)
+            self.sql.update(self._name, obj.id, obj)
 
     def get(self, obj_id):
         """ Fetches the :class:`TableRow` with the given `id`. """
 
-        rows = self._select_by_id(obj_id)
+        rows = self.sql.select_by_id(self._name, obj_id)
         if len(rows) == 0:
             raise RowNotFound("No %r with id=%d" % (self._row_cls, obj_id))
         [(data,)] = rows
@@ -343,7 +328,7 @@ class Table(object):
             msg = "Table.delete(row) is deprecated; use row.delete() instead."
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         assert isinstance(obj_id, (int, long))
-        self._delete(obj_id)
+        self.sql.delete(self._name, obj_id)
 
     def get_all(self, _deprecation_warning=True):
         if _deprecation_warning:
@@ -355,7 +340,7 @@ class Table(object):
         """ Returns an iterator over all matching :class:`TableRow`
         objects. """
 
-        for ob_id, ob_data in self._select_all():
+        for ob_id, ob_data in self.sql.select_all(self._name):
             row = self._row(ob_id, ob_data)
             if all(row[k] == kwargs[k] for k in kwargs):
                 yield row
