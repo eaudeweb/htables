@@ -234,6 +234,11 @@ class SqliteDialect(object):
             raise
         return cursor
 
+    def create_table(self, name):
+        self.execute("CREATE TABLE IF NOT EXISTS " + name + " ("
+                     "id INTEGER PRIMARY KEY, "
+                     "data BLOB)")
+
     def drop_table(self, name):
         self.execute("DROP TABLE IF EXISTS " + name)
 
@@ -488,11 +493,6 @@ class SqliteTable(Table):
 
     def _execute(self, *args):
         return self._dialect().execute(*args)
-
-    def create_table(self):
-        self._execute("CREATE TABLE IF NOT EXISTS " + self._name + " ("
-                      "id INTEGER PRIMARY KEY, "
-                      "data BLOB)")
 
     def _insert(self, obj):
         cursor = self._execute("INSERT INTO " + self._name +
