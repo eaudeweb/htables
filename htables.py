@@ -270,35 +270,35 @@ class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
     ``data`` (hstore). """
 
-    def __init__(self, row_cls, dialect_cls, session):
+    def __init__(self, row_cls, session):
         self._session = session
-        self._dialect_cls = dialect_cls
         self._row_cls = row_cls
         self._name = row_cls._table
 
-    def _dialect(self):
-        return self._dialect_cls(self._session.conn)
+    @property
+    def sql(self):
+        return self._session.sql
 
     def create_table(self):
-        return self._dialect().create_table(self._name)
+        return self.sql.create_table(self._name)
 
     def drop_table(self):
-        return self._dialect().drop_table(self._name)
+        return self.sql.drop_table(self._name)
 
     def _insert(self, obj):
-        return self._dialect().insert(self._name, obj)
+        return self.sql.insert(self._name, obj)
 
     def _select_by_id(self, obj_id):
-        return self._dialect().select_by_id(self._name, obj_id)
+        return self.sql.select_by_id(self._name, obj_id)
 
     def _select_all(self):
-        return self._dialect().select_all(self._name)
+        return self.sql.select_all(self._name)
 
     def _update(self, obj_id, obj):
-        return self._dialect().update(self._name, obj_id, obj)
+        return self.sql.update(self._name, obj_id, obj)
 
     def _delete(self, obj_id):
-        return self._dialect().delete(self._name, obj_id)
+        return self.sql.delete(self._name, obj_id)
 
     def _row(self, id=None, data={}):
         ob = self._row_cls(data)
@@ -414,6 +414,10 @@ class Session(object):
             self._conn = self._pool._get_connection()
         return self._conn
 
+    @property
+    def sql(self):
+        return self._dialect_cls(self.conn)
+
     def _release_conn(self):
         conn = self._conn
         self._conn = _expired
@@ -447,7 +451,7 @@ class Session(object):
         else:
             raise ValueError("Can't determine table type from %r" %
                              (obj_or_cls,))
-        return Table(row_cls, self._dialect_cls, self)
+        return Table(row_cls, self)
 
     def table(self, obj_or_cls):
         msg = ("Session.table(RowCls) is deprecated; use "
