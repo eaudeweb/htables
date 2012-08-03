@@ -1,7 +1,7 @@
 import distutils.core
 
 distutils.core.setup(
-    name='htables',
+    name='HTables',
     version='dev',
     author='Eau de Web',
     author_email='office@eaudeweb.ro',
