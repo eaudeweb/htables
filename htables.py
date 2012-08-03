@@ -480,15 +480,18 @@ class Session(object):
             table.create_table()
         self._conn.commit()
 
+    def delete_all_blobs(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT oid FROM pg_largeobject_metadata")
+        for [oid] in cursor:
+            self.conn.lobject(oid, 'n').unlink()
+
     def drop_all(self):
         """ Drop all tables defined by the schema and delete all blob
         files. """
         for table in self._tables():
             table.drop_table()
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT oid FROM pg_largeobject_metadata")
-        for [oid] in cursor:
-            self.conn.lobject(oid, 'n').unlink()
+        self.delete_all_blobs()
         self._conn.commit()
 
 
@@ -527,6 +530,9 @@ class SqliteSession(Session):
 
     def del_db_file(self, id):
         del self._db_files[id]
+
+    def delete_all_blobs(self):
+        pass
 
     def drop_all(self):
         for table in self._tables():
