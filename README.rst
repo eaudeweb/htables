@@ -1,3 +1,6 @@
+.. role:: class
+
+
 HTables
 =======
 
