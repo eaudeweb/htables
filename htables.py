@@ -544,6 +544,7 @@ class SqliteSession(Session):
 
 
 class SqliteDB(object):
+    """ SQLite database session pool; same api as :class:`PostgresqlDB` """
 
     def __init__(self, uri, schema=None):
         import sqlite3

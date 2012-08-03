@@ -5,10 +5,13 @@ API
 .. module:: htables
 
 
-Session pool
-------------
-.. autoclass:: htables.SessionPool
+Database
+--------
+.. autoclass:: htables.PostgresqlDB
   :members:
+
+.. autoclass:: htables.SqliteDB
+
 
 Session
 -------
@@ -20,6 +23,7 @@ Table
 -----
 .. autoclass:: htables.Table
   :members:
+
 
 Row and file classes
 --------------------
