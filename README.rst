@@ -39,3 +39,13 @@ same record::
     >>> tweet = tweet_table.find_first()
     >>> tweet = tweet_table.find_single()
     >>> tweet = tweet_table.get(1)
+
+
+Links
+-----
+
+* documentation_
+* `source code`_
+
+.. _documentation: http://eaudeweb.github.com/htables/
+.. _source code: https://github.com/eaudeweb/htables/
