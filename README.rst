@@ -1,7 +1,10 @@
-HTables is a database library for storing documents in a relational
-database. Two backends are supported so far:
-:class:`~htables.PostgresqlDB` (using the hstore_ extension; requires
-psycopg2_) and :class:`~htables.SQLiteDB`.
+HTables
+=======
+
+HTables is a database library for storing mapping objects in a relational
+database. Two backends are supported so far: :class:`~htables.PostgresqlDB`
+(using the hstore_ extension; requires psycopg2_) and
+:class:`~htables.SQLiteDB`.
 
 .. _hstore: http://www.postgresql.org/docs/current/static/hstore.html
 .. _psycopg2: http://initd.org/psycopg/
