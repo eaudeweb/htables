@@ -6,7 +6,4 @@ distutils.core.setup(
     author='Eau de Web',
     author_email='office@eaudeweb.ro',
     py_modules=['htables'],
-    install_requires=[
-        'psycopg2',
-    ],
 )
