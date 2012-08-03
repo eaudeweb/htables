@@ -8,7 +8,7 @@ f.close()
 distutils.core.setup(
     name='HTables',
     description=description,
-    version='0.4b2',
+    version='0.4b3',
     author='Eau de Web',
     author_email='office@eaudeweb.ro',
     py_modules=['htables'],

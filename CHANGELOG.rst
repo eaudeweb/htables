@@ -1,4 +1,4 @@
-dev (unreleased)
+0.4 (unreleased)
 ----------------
 * Bring SQLite backend API on par with PostgreSQL.
 * Refactor Table code; extract backend-specific SQL wrappers.
