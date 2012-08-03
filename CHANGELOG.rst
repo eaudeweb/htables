@@ -1,5 +1,9 @@
 dev (unreleased)
 ----------------
+* Bring SQLite backend API on par with PostgreSQL.
+* Refactor Table code; extract backend-specific SQL wrappers.
+* Explicit schema definition no longer required.
+* Catch common SQL errors and re-raise custom exceptions.
 
 0.3 (2012-06-24)
 ----------------
