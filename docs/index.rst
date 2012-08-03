@@ -1,6 +1,3 @@
-Welcome to HTables's documentation!
-===================================
-
 .. include:: ../README.rst
 
 Contents:
