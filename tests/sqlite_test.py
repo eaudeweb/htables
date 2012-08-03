@@ -19,7 +19,7 @@ class SqliteTest(_HTablesApiTest):
 
     def create_db(self):
         import htables
-        return htables.SqliteDB(':memory:', schema=self.schema)
+        return htables.SqliteDB(':memory:')
 
     def _unpack_data(self, value):
         return json.loads(value)

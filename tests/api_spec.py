@@ -13,14 +13,16 @@ class _HTablesApiTest(TestCase):
     def preSetUp(self):
         super(_HTablesApiTest, self).preSetUp()
         import htables
-        self.schema = htables.Schema(['person'])
         self.db = self.create_db()
         with self.db_session() as session:
-            session.create_all()
+            session['person'].create_table()
+            session.commit()
 
         def drop_all_tables():
             with self.db_session() as session:
-                session.drop_all()
+                session['person'].drop_table()
+                session.delete_all_blobs()
+                session.commit()
 
         self.addCleanup(drop_all_tables)
 
@@ -282,7 +284,6 @@ class _HTablesApiTest(TestCase):
 
     def test_table_access_with_missing_sql_table_raises_exception(self):
         from htables import MissingTable
-        self.schema.define_table('foo', 'foo')
         with self.db_session() as session:
             table = session['foo']
             with self.assertRaisesRegexp(MissingTable, r'^foo$') as e:
@@ -339,6 +340,8 @@ class _HTablesApiTest(TestCase):
                 session['person'].get_all()
 
     def test_deprecation_session_table(self):
+        from nose import SkipTest
+        raise SkipTest  # we don't have a schema any more
         PersonRow = self.schema['person']
         with self.db_session() as session:
             with self.expect_one_warning():

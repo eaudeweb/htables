@@ -12,7 +12,7 @@ class PostgresqlTest(_HTablesApiTest):
 
     def create_db(self):
         import htables
-        return htables.PostgresqlDB(CONNECTION_URI, self.schema, debug=True)
+        return htables.PostgresqlDB(CONNECTION_URI, debug=True)
 
 
 def insert_spy(obj, attr_name):
@@ -26,8 +26,7 @@ class PostgresqlSessionTest(unittest.TestCase):
 
     def get_db(self):
         import htables
-        schema = htables.Schema(['person'])
-        return htables.PostgresqlDB(CONNECTION_URI, schema, debug=True)
+        return htables.PostgresqlDB(CONNECTION_URI, debug=True)
 
     def test_use_expired_connection(self):
         db = self.get_db()
