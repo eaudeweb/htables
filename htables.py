@@ -94,10 +94,12 @@ class DbFile(object):
 class PostgresqlDB(object):
     """ A pool of reusable database connections that get created on demand. """
 
-    def __init__(self, connection_uri, schema, debug=False):
+    def __init__(self, connection_uri, schema=None, debug=False):
         global psycopg2
         import psycopg2.pool
         import psycopg2.extras
+        if schema is None:
+            schema = Schema([])
         self._schema = schema
         params = transform_connection_uri(connection_uri)
         self._conn_pool = psycopg2.pool.ThreadedConnectionPool(0, 5, **params)
@@ -480,15 +482,18 @@ class Session(object):
             table.create_table()
         self._conn.commit()
 
+    def delete_all_blobs(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT oid FROM pg_largeobject_metadata")
+        for [oid] in cursor:
+            self.conn.lobject(oid, 'n').unlink()
+
     def drop_all(self):
         """ Drop all tables defined by the schema and delete all blob
         files. """
         for table in self._tables():
             table.drop_table()
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT oid FROM pg_largeobject_metadata")
-        for [oid] in cursor:
-            self.conn.lobject(oid, 'n').unlink()
+        self.delete_all_blobs()
         self._conn.commit()
 
 
@@ -528,6 +533,9 @@ class SqliteSession(Session):
     def del_db_file(self, id):
         del self._db_files[id]
 
+    def delete_all_blobs(self):
+        pass
+
     def drop_all(self):
         for table in self._tables():
             table.drop_table()
@@ -537,7 +545,7 @@ class SqliteSession(Session):
 
 class SqliteDB(object):
 
-    def __init__(self, uri, schema):
+    def __init__(self, uri, schema=None):
         import sqlite3
         self._connect = lambda: sqlite3.connect(uri)
         if uri == ':memory:':
@@ -547,6 +555,8 @@ class SqliteDB(object):
             self._files = {}
         else:
             self._files = None
+        if schema is None:
+            schema = Schema([])
         self.schema = schema
 
     def get_session(self):
