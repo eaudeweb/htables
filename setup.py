@@ -13,7 +13,7 @@ distutils.core.setup(
     url='http://eaudeweb.github.com/htables/',
     description=summary,
     long_description=readme_rst,
-    version='0.4b3',
+    version='0.4b4',
     author='Eau de Web',
     author_email='office@eaudeweb.ro',
     py_modules=['htables'],
