@@ -5,11 +5,11 @@ f = open(os.path.join(os.path.dirname(__file__), 'README.rst'), 'rb')
 readme_rst = f.read()
 f.close()
 
-summary = ("HTables is a database library for storing mapping objects "
+summary = ("htables is a database library for storing mapping objects "
            "in a relational database.")
 
 distutils.core.setup(
-    name='HTables',
+    name='htables',
     url='http://eaudeweb.github.com/htables/',
     description=summary,
     long_description=readme_rst,
