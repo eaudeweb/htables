@@ -354,7 +354,7 @@ class Table(object):
 
         for ob_id, ob_data in self.sql.select_all(self._name):
             row = self._row(ob_id, ob_data)
-            if all(row[k] == kwargs[k] for k in kwargs):
+            if all(row.get(k) == kwargs[k] for k in kwargs):
                 yield row
 
     def find_first(self, **kwargs):

@@ -191,6 +191,14 @@ class _HTablesApiTest(TestCase):
             row3 = table.get(3)
             self.assertEqual(list(table.find(color='red')), [row1, row3])
 
+    def test_find_with_filter_and_missing_keys_in_rows(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='red').save()
+            table.new(name='two').save()
+            row1 = table.get(1)
+            self.assertEqual(list(table.find(color='red')), [row1])
+
     def test_find_first(self):
         with self.db_session() as session:
             table = session['person']
