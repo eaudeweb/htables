@@ -282,6 +282,10 @@ class Table(object):
     """ A database table with two columns: ``id`` (integer primary key) and
     ``data`` (hstore). """
 
+    RowNotFound = RowNotFound
+
+    MultipleRowsFound = MultipleRowsFound
+
     def __init__(self, row_cls, session):
         self._session = session
         self._row_cls = row_cls
