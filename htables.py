@@ -216,14 +216,18 @@ class PostgresqlDialect(object):
     def _quote(self, string):
         return "'%s'" % string.replace("'", "''")
 
-    def select(self, name, filter):
+    def select(self, name, filter, offset, limit):
         sql_query = "SELECT id, data FROM " + name
         if filter:
             conditions = ["data -> %s = %s" % (self._quote(key),
                                                self._quote(value))
                           for key, value in filter.iteritems()]
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
-        return self.execute(sql_query)
+        results = self.execute(sql_query)
+        if offset or limit:
+            end = None if limit is None else offset + limit
+            results = iter(list(results)[offset:end])
+        return results
 
     def update(self, name, obj_id, obj):
         self.execute("UPDATE " + name + " SET data = %s WHERE id = %s",
@@ -275,9 +279,13 @@ class SqliteDialect(object):
             if all(data.get(k) == filter[k] for k in filter):
                 yield (id, data)
 
-    def select(self, name, filter):
+    def select(self, name, filter, offset, limit):
         cursor = self.execute("SELECT id, data FROM " + name)
-        return self._clip_results(cursor, filter)
+        results = self._clip_results(cursor, filter)
+        if offset or limit:
+            end = None if limit is None else offset + limit
+            results = iter(list(results)[offset:end])
+        return results
 
     def insert(self, name, obj):
         cursor = self.execute("INSERT INTO " + name +
@@ -370,12 +378,8 @@ class Table(object):
     def query(self, offset=0, limit=None, filter={}):
         """ Same as :meth:`find` but results are clipped with `offset` and
         `limit`. """
-        end = None if limit is None else offset + limit
-        results = (self._row(ob_id, ob_data)
-                   for ob_id, ob_data in self.sql.select(self._name, filter))
-        if offset or limit:
-            results = iter(list(results)[offset:end])
-        return results
+        for id_, data in self.sql.select(self._name, filter, offset, limit):
+            yield self._row(id_, data)
 
     def find(self, **kwargs):
         """ Returns an iterator over all matching :class:`TableRow`
