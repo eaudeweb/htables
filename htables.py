@@ -269,12 +269,15 @@ class SqliteDialect(object):
                                (obj_id,))
         return [(json.loads(r[0]),) for r in cursor]
 
-    def select(self, name, filter):
-        cursor = self.execute("SELECT id, data FROM " + name)
+    def _clip_results(self, cursor, filter):
         for (id, data_json) in cursor:
             data = json.loads(data_json)
             if all(data.get(k) == filter[k] for k in filter):
                 yield (id, data)
+
+    def select(self, name, filter):
+        cursor = self.execute("SELECT id, data FROM " + name)
+        return self._clip_results(cursor, filter)
 
     def insert(self, name, obj):
         cursor = self.execute("INSERT INTO " + name +
