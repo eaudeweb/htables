@@ -199,6 +199,23 @@ class _HTablesApiTest(TestCase):
             row1 = table.get(1)
             self.assertEqual(list(table.find(color='red')), [row1])
 
+    def test_find_with_two_filters(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='red')
+            table.new(name='two', color='red')
+            table.new(name='two', color='blue')
+            row2 = table.get(2)
+            self.assertEqual(list(table.find(name='two', color='red')), [row2])
+
+    def test_filter_with_funny_characters(self):
+        with self.db_session() as session:
+            table = session['person']
+            name = 'adsfasdf!@#$%^&*()-=\\/"\'][{}><.,?`~ \n\t\fadsfasdf'
+            table.new(name=name)
+            row1 = table.get(1)
+            self.assertEqual(list(table.find(name=name)), [row1])
+
     def test_find_first(self):
         with self.db_session() as session:
             table = session['person']

@@ -213,11 +213,17 @@ class PostgresqlDialect(object):
                               (obj_id,))
         return list(cursor)
 
+    def _quote(self, string):
+        return "'%s'" % string.replace("'", "''")
+
     def select(self, name, filter):
-        cursor = self.execute("SELECT id, data FROM " + name)
-        for (id, data) in cursor:
-            if all(data.get(k) == filter[k] for k in filter):
-                yield (id, data)
+        sql_query = "SELECT id, data FROM " + name
+        if filter:
+            conditions = ["data -> %s = %s" % (self._quote(key),
+                                               self._quote(value))
+                          for key, value in filter.iteritems()]
+            sql_query += " WHERE (%s)" % ' AND '.join(conditions)
+        return self.execute(sql_query)
 
     def update(self, name, obj_id, obj):
         self.execute("UPDATE " + name + " SET data = %s WHERE id = %s",
