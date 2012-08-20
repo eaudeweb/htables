@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import sqlite3
 import simplejson as json
 from common import TestCase
-from api_spec import _HTablesApiTest
+import api_spec
 
 
 @contextmanager
@@ -15,7 +15,7 @@ def db_session(pool):
         pool.put_session(session)
 
 
-class SqliteTest(_HTablesApiTest):
+class SqliteApiTest(api_spec._HTablesApiTest):
 
     def create_db(self):
         import htables
@@ -30,6 +30,13 @@ class SqliteTest(_HTablesApiTest):
     def test_large_file_error(self):
         from nose import SkipTest
         raise SkipTest
+
+
+class SqliteQueryApiTest(api_spec._HTablesQueryApiTest):
+
+    def create_db(self):
+        import htables
+        return htables.SqliteDB(':memory:')
 
 
 class SqliteSessionTest(TestCase):

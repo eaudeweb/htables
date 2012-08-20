@@ -354,3 +354,47 @@ class _HTablesApiTest(TestCase):
         with self.db_session() as session:
             with self.expect_one_warning():
                 session.table(PersonRow)
+
+
+class _HTablesQueryApiTest(TestCase):
+
+    def preSetUp(self):
+        super(_HTablesQueryApiTest, self).preSetUp()
+        import htables
+        self.db = self.create_db()
+        with self.db.session() as session:
+            session['person'].create_table()
+            session.commit()
+
+        self.session = self.db.get_session()
+
+        def cleanup():
+            self.db.put_session(self.session)
+            with self.db.session() as session:
+                session['person'].drop_table()
+                session.delete_all_blobs()
+                session.commit()
+
+        self.addCleanup(cleanup)
+
+    def test_query_with_limit_2_returns_first_2_results(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c)
+        results = list(table.query(limit=2))
+        self.assertEqual(results, [{'name': "row-0"}, {'name': "row-1"}])
+
+    def test_query_with_offset_2_and_no_limit_returns_last_2_results(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c)
+        results = list(table.query(offset=2))
+        self.assertEqual(results, [{'name': "row-2"}, {'name': "row-3"}])
+
+    def test_query_with_limit_1_and_filtering_returns_first_match(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="odd" if c%2 else "even")
+        results = list(table.query(limit=1, filter={'parity': "odd"}))
+        self.assertEqual(results, [{'name': "row-1", 'parity': "odd"}])

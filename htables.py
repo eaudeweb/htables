@@ -361,6 +361,12 @@ class Table(object):
             if all(row.get(k) == kwargs[k] for k in kwargs):
                 yield row
 
+    def query(self, offset=0, limit=None, filter={}):
+        """ Same as :meth:`find` but results are clipped with `offset` and
+        `limit`. """
+        end = None if limit is None else offset + limit
+        return list(self.find(**filter))[offset:end]
+
     def find_first(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
         Raises `RowNotFound` if no result is found. """
