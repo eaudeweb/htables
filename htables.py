@@ -223,11 +223,11 @@ class PostgresqlDialect(object):
                                                self._quote(value))
                           for key, value in filter.iteritems()]
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
-        results = self.execute(sql_query)
-        if offset or limit:
-            end = None if limit is None else offset + limit
-            results = iter(list(results)[offset:end])
-        return results
+        if offset != 0:
+            sql_query += " OFFSET %d" % offset
+        if limit is not None:
+            sql_query += " LIMIT %d" % limit
+        return self.execute(sql_query)
 
     def update(self, name, obj_id, obj):
         self.execute("UPDATE " + name + " SET data = %s WHERE id = %s",
