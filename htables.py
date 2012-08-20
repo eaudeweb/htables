@@ -352,20 +352,21 @@ class Table(object):
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return self.find()
 
-    def find(self, **kwargs):
-        """ Returns an iterator over all matching :class:`TableRow`
-        objects. """
-
-        for ob_id, ob_data in self.sql.select_all(self._name):
-            row = self._row(ob_id, ob_data)
-            if all(row.get(k) == kwargs[k] for k in kwargs):
-                yield row
-
     def query(self, offset=0, limit=None, filter={}):
         """ Same as :meth:`find` but results are clipped with `offset` and
         `limit`. """
         end = None if limit is None else offset + limit
-        return list(self.find(**filter))[offset:end]
+        results = (self._row(ob_id, ob_data)
+                   for ob_id, ob_data in self.sql.select_all(self._name)
+                   if all(ob_data.get(k) == filter[k] for k in filter))
+        if offset or limit:
+            results = iter(list(results)[offset:end])
+        return results
+
+    def find(self, **kwargs):
+        """ Returns an iterator over all matching :class:`TableRow`
+        objects. """
+        return self.query(filter=kwargs)
 
     def find_first(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
