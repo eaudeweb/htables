@@ -213,8 +213,11 @@ class PostgresqlDialect(object):
                               (obj_id,))
         return list(cursor)
 
-    def select_all(self, name):
-        return self.execute("SELECT id, data FROM " + name)
+    def select(self, name, filter):
+        cursor = self.execute("SELECT id, data FROM " + name)
+        for (id, data) in cursor:
+            if all(data.get(k) == filter[k] for k in filter):
+                yield (id, data)
 
     def update(self, name, obj_id, obj):
         self.execute("UPDATE " + name + " SET data = %s WHERE id = %s",
@@ -260,9 +263,12 @@ class SqliteDialect(object):
                                (obj_id,))
         return [(json.loads(r[0]),) for r in cursor]
 
-    def select_all(self, name):
+    def select(self, name, filter):
         cursor = self.execute("SELECT id, data FROM " + name)
-        return ((id, json.loads(data)) for (id, data) in cursor)
+        for (id, data_json) in cursor:
+            data = json.loads(data_json)
+            if all(data.get(k) == filter[k] for k in filter):
+                yield (id, data)
 
     def insert(self, name, obj):
         cursor = self.execute("INSERT INTO " + name +
@@ -357,8 +363,7 @@ class Table(object):
         `limit`. """
         end = None if limit is None else offset + limit
         results = (self._row(ob_id, ob_data)
-                   for ob_id, ob_data in self.sql.select_all(self._name)
-                   if all(ob_data.get(k) == filter[k] for k in filter))
+                   for ob_id, ob_data in self.sql.select(self._name, filter))
         if offset or limit:
             results = iter(list(results)[offset:end])
         return results
