@@ -415,3 +415,13 @@ class _HTablesQueryApiTest(TestCase):
                       parity="odd" if c%2 else "even")
         results = list(table.query(limit=1, filter={'parity': "odd"}))
         self.assertEqual(results, [{'name': "row-1", 'parity': "odd"}])
+
+    def test_order_by_string(self):
+        table = self.session['person']
+        table.new(name="row-1", letter='d')
+        table.new(name="row-2", letter='c')
+        table.new(name="row-3", letter='b')
+        table.new(name="row-4", letter='a')
+        results = list(table.query(order_by='letter'))
+        self.assertEqual([row['name'] for row in results],
+                         ['row-4', 'row-3', 'row-2', 'row-1'])

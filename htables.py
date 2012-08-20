@@ -216,13 +216,15 @@ class PostgresqlDialect(object):
     def _quote(self, string):
         return "'%s'" % string.replace("'", "''")
 
-    def select(self, name, filter, offset, limit):
+    def select(self, name, filter, offset, limit, order_by):
         sql_query = "SELECT id, data FROM " + name
         if filter:
             conditions = ["data -> %s = %s" % (self._quote(key),
                                                self._quote(value))
                           for key, value in filter.iteritems()]
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
+        if order_by is not None:
+            sql_query += " ORDER BY (data -> %s) " % self._quote(order_by)
         if offset != 0:
             sql_query += " OFFSET %d" % offset
         if limit is not None:
@@ -279,13 +281,15 @@ class SqliteDialect(object):
             if all(data.get(k) == filter[k] for k in filter):
                 yield (id, data)
 
-    def select(self, name, filter, offset, limit):
+    def select(self, name, filter, offset, limit, order_by):
         cursor = self.execute("SELECT id, data FROM " + name)
         results = self._clip_results(cursor, filter)
+        if order_by:
+            results = sorted(list(results), key=lambda r: r[1].get(order_by))
         if offset or limit:
             end = None if limit is None else offset + limit
-            results = iter(list(results)[offset:end])
-        return results
+            results = list(results)[offset:end]
+        return iter(results)
 
     def insert(self, name, obj):
         cursor = self.execute("INSERT INTO " + name +
@@ -375,10 +379,12 @@ class Table(object):
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return self.find()
 
-    def query(self, offset=0, limit=None, filter={}):
+    def query(self, offset=0, limit=None, filter={}, order_by=None):
         """ Same as :meth:`find` but results are clipped with `offset` and
         `limit`. """
-        for id_, data in self.sql.select(self._name, filter, offset, limit):
+        for id_, data in self.sql.select(self._name, filter,
+                                         offset, limit,
+                                         order_by):
             yield self._row(id_, data)
 
     def find(self, **kwargs):
