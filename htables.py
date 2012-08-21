@@ -216,7 +216,7 @@ class PostgresqlDialect(object):
     def _quote(self, string):
         return "'%s'" % string.replace("'", "''")
 
-    def select(self, name, where, offset, limit, order_by):
+    def select(self, name, where, order_by, offset, limit):
         sql_query = "SELECT id, data FROM " + name
         if where:
             conditions = ["data -> %s = %s" % (self._quote(key),
@@ -281,7 +281,7 @@ class SqliteDialect(object):
             if all(data.get(k) == where[k] for k in where):
                 yield (id, data)
 
-    def select(self, name, where, offset, limit, order_by):
+    def select(self, name, where, order_by, offset, limit):
         cursor = self.execute("SELECT id, data FROM " + name)
         results = self._clip_results(cursor, where)
         if order_by:
@@ -379,12 +379,11 @@ class Table(object):
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return self.find()
 
-    def query(self, offset=0, limit=None, where={}, order_by=None):
+    def query(self, where={}, order_by=None, offset=0, limit=None):
         """ Same as :meth:`find` but results are clipped with `offset` and
         `limit`. """
-        for id_, data in self.sql.select(self._name, where,
-                                         offset, limit,
-                                         order_by):
+        for id_, data in self.sql.select(self._name, where, order_by,
+                                         offset, limit):
             yield self._row(id_, data)
 
     def find(self, **kwargs):
