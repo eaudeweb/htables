@@ -33,6 +33,16 @@ class MissingTable(RuntimeError):
 COPY_BUFFER_SIZE = 2 ** 14
 
 
+class op(object):
+    """ Container for `where` operators """
+
+    class RE(object):
+        """ Match a regular expression """
+
+        def __init__(self, pattern):
+            self.pattern = pattern
+
+
 def _iter_file(src_file, close=False):
     try:
         while True:
@@ -227,9 +237,17 @@ class PostgresqlDialect(object):
             sql_query = "SELECT id, data"
         sql_query += " FROM " + name
         if where:
-            conditions = ["data -> %s = %s" % (self._quote(key),
-                                               self._quote(value))
-                          for key, value in where.iteritems()]
+            conditions = []
+            for key, value in where.iteritems():
+                if isinstance(value, basestring):
+                    conditions.append("data -> %s = %s" %
+                                      (self._quote(key), self._quote(value)))
+                elif isinstance(value, op.RE):
+                    conditions.append("data -> %s ~ %s" %
+                                      (self._quote(key),
+                                       self._quote(value.pattern)))
+                else:
+                    raise RuntimeError("Unknown operator %r" % value)
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
         if order_by is not None:
             sql_query += " ORDER BY (data -> %s) " % self._quote(order_by)
@@ -285,9 +303,25 @@ class SqliteDialect(object):
         return [(json.loads(r[0]),) for r in cursor]
 
     def _clip_results(self, cursor, where):
+        def eq_matcher(key, value):
+            return lambda data: data.get(key) == value
+
+        def re_matcher(key, pattern):
+            compiled = re.compile(pattern)
+            return lambda data: compiled.search(data.get(key, '')) is not None
+
+        matchers = []
+        for key, value in where.iteritems():
+            if isinstance(value, basestring):
+                matchers.append(eq_matcher(key, value))
+            elif isinstance(value, op.RE):
+                matchers.append(re_matcher(key, value.pattern))
+            else:
+                raise RuntimeError("Unknown operator %r" % value)
+
         for (id, data_json) in cursor:
             data = json.loads(data_json)
-            if all(data.get(k) == where[k] for k in where):
+            if all(m(data) for m in matchers):
                 yield (id, data)
 
     def select(self, name, where, order_by, offset, limit, count):

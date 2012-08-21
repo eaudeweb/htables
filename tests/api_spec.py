@@ -440,3 +440,21 @@ class _HTablesQueryApiTest(TestCase):
                       parity="odd" if c%2 else "even")
         results = table.query(where={'parity': "odd"}, count=True)
         self.assertEqual(results, 2)
+
+    def test_query_with_generic_regexp_returns_all(self):
+        from htables import op
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="apple" if c%2 else "apples")
+        results = table.query(where={'parity': op.RE('^ap')}, count=True)
+        self.assertEqual(results, 4)
+
+    def test_query_with_specific_regexp_returns_2(self):
+        from htables import op
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="apple" if c%2 else "apples")
+        results = table.query(where={'parity': op.RE('le$')}, count=True)
+        self.assertEqual(results, 2)
