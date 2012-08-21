@@ -413,7 +413,7 @@ class _HTablesQueryApiTest(TestCase):
         for c in range(4):
             table.new(name="row-%d" % c,
                       parity="odd" if c%2 else "even")
-        results = list(table.query(limit=1, filter={'parity': "odd"}))
+        results = list(table.query(limit=1, where={'parity': "odd"}))
         self.assertEqual(results, [{'name': "row-1", 'parity': "odd"}])
 
     def test_order_by_string(self):

@@ -216,12 +216,12 @@ class PostgresqlDialect(object):
     def _quote(self, string):
         return "'%s'" % string.replace("'", "''")
 
-    def select(self, name, filter, offset, limit, order_by):
+    def select(self, name, where, offset, limit, order_by):
         sql_query = "SELECT id, data FROM " + name
-        if filter:
+        if where:
             conditions = ["data -> %s = %s" % (self._quote(key),
                                                self._quote(value))
-                          for key, value in filter.iteritems()]
+                          for key, value in where.iteritems()]
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
         if order_by is not None:
             sql_query += " ORDER BY (data -> %s) " % self._quote(order_by)
@@ -275,15 +275,15 @@ class SqliteDialect(object):
                                (obj_id,))
         return [(json.loads(r[0]),) for r in cursor]
 
-    def _clip_results(self, cursor, filter):
+    def _clip_results(self, cursor, where):
         for (id, data_json) in cursor:
             data = json.loads(data_json)
-            if all(data.get(k) == filter[k] for k in filter):
+            if all(data.get(k) == where[k] for k in where):
                 yield (id, data)
 
-    def select(self, name, filter, offset, limit, order_by):
+    def select(self, name, where, offset, limit, order_by):
         cursor = self.execute("SELECT id, data FROM " + name)
-        results = self._clip_results(cursor, filter)
+        results = self._clip_results(cursor, where)
         if order_by:
             results = sorted(list(results), key=lambda r: r[1].get(order_by))
         if offset or limit:
@@ -379,10 +379,10 @@ class Table(object):
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return self.find()
 
-    def query(self, offset=0, limit=None, filter={}, order_by=None):
+    def query(self, offset=0, limit=None, where={}, order_by=None):
         """ Same as :meth:`find` but results are clipped with `offset` and
         `limit`. """
-        for id_, data in self.sql.select(self._name, filter,
+        for id_, data in self.sql.select(self._name, where,
                                          offset, limit,
                                          order_by):
             yield self._row(id_, data)
@@ -390,7 +390,7 @@ class Table(object):
     def find(self, **kwargs):
         """ Returns an iterator over all matching :class:`TableRow`
         objects. """
-        return self.query(filter=kwargs)
+        return self.query(where=kwargs)
 
     def find_first(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
