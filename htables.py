@@ -7,6 +7,9 @@ import StringIO
 import warnings
 import re
 from contextlib import contextmanager
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class BlobsNotSupported(Exception):
@@ -177,6 +180,7 @@ class PostgresqlDialect(object):
 
     def execute(self, *args, **kwargs):
         cursor = kwargs.get('cursor') or self.conn.cursor()
+        log.debug('PostgreSQL query: %r', args)
         try:
             cursor.execute(*args)
         except Exception, e:
@@ -248,6 +252,7 @@ class SqliteDialect(object):
 
     def execute(self, *args):
         cursor = self.conn.cursor()
+        log.debug('SQLite query: %r', args)
         try:
             cursor.execute(*args)
         except Exception, e:
