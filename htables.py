@@ -220,8 +220,12 @@ class PostgresqlDialect(object):
     def _quote(self, string):
         return "'%s'" % string.replace("'", "''")
 
-    def select(self, name, where, order_by, offset, limit):
-        sql_query = "SELECT id, data FROM " + name
+    def select(self, name, where, order_by, offset, limit, count):
+        if count:
+            sql_query = "SELECT COUNT(*)"
+        else:
+            sql_query = "SELECT id, data"
+        sql_query += " FROM " + name
         if where:
             conditions = ["data -> %s = %s" % (self._quote(key),
                                                self._quote(value))
@@ -286,7 +290,7 @@ class SqliteDialect(object):
             if all(data.get(k) == where[k] for k in where):
                 yield (id, data)
 
-    def select(self, name, where, order_by, offset, limit):
+    def select(self, name, where, order_by, offset, limit, count):
         cursor = self.execute("SELECT id, data FROM " + name)
         results = self._clip_results(cursor, where)
         if order_by:
@@ -294,6 +298,9 @@ class SqliteDialect(object):
         if offset or limit:
             end = None if limit is None else offset + limit
             results = list(results)[offset:end]
+        if count:
+            num_rows = len(list(results))
+            results = [(num_rows,)]
         return iter(results)
 
     def insert(self, name, obj):
@@ -384,12 +391,19 @@ class Table(object):
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return self.find()
 
-    def query(self, where={}, order_by=None, offset=0, limit=None):
+    def query(self, where={}, order_by=None,
+              offset=0, limit=None, count=False):
         """ Same as :meth:`find` but results are clipped with `offset` and
         `limit`. """
-        for id_, data in self.sql.select(self._name, where, order_by,
-                                         offset, limit):
-            yield self._row(id_, data)
+        results = self.sql.select(self._name, where, order_by,
+                                  offset, limit, count)
+        if count:
+            results = list(results)
+            print results
+            [(num_rows,)] = list(results)
+            return num_rows
+        else:
+            return (self._row(id_, data) for id_, data in results)
 
     def find(self, **kwargs):
         """ Returns an iterator over all matching :class:`TableRow`

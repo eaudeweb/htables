@@ -425,3 +425,18 @@ class _HTablesQueryApiTest(TestCase):
         results = list(table.query(order_by='letter'))
         self.assertEqual([row['name'] for row in results],
                          ['row-4', 'row-3', 'row-2', 'row-1'])
+
+    def test_count_with_no_filter_returns_4(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c)
+        results = table.query(count=True)
+        self.assertEqual(results, 4)
+
+    def test_count_with_filter_returns_2(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="odd" if c%2 else "even")
+        results = table.query(where={'parity': "odd"}, count=True)
+        self.assertEqual(results, 2)
