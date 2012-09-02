@@ -42,7 +42,7 @@ def _iter_file(src_file, close=False):
             src_file.close()
 
 
-class TableRow(dict):
+class Row(dict):
     """ Database row, represented as a Python `dict`.
 
     .. attribute:: id
@@ -59,6 +59,9 @@ class TableRow(dict):
     def save(self):
         """ Execute an `UPDATE` query for this row. """
         self._parent_table.save(self, _deprecation_warning=False)
+
+
+TableRow = Row
 
 
 class DbFile(object):
@@ -92,7 +95,12 @@ class DbFile(object):
 
 
 class PostgresqlDB(object):
-    """ A pool of reusable database connections that get created on demand. """
+    """
+    Session pool for a PostgreSQL database. Expects a connection string,
+    for example ``'postgresql://localhost/myproject'``.
+    If `debug` is True, a validation is performed on `row.save()`,
+    to make sure all keys and values are strings. `schema` is deprecated.
+    """
 
     def __init__(self, connection_uri, schema=None, debug=False):
         global psycopg2
@@ -296,9 +304,11 @@ class Table(object):
         return self._session.sql
 
     def create_table(self):
+        """ Create the backend SQL table. """
         return self.sql.create_table(self._name)
 
     def drop_table(self):
+        """ Drop the backend SQL table. """
         return self.sql.drop_table(self._name)
 
     def _row(self, id=None, data={}):
@@ -548,7 +558,7 @@ class SqliteSession(Session):
 
 
 class SqliteDB(object):
-    """ SQLite database session pool; same api as :class:`PostgresqlDB` """
+    """ SQLite database session pool; same api as :class:`PostgresqlDB`. """
 
     def __init__(self, uri, schema=None):
         import sqlite3
