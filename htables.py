@@ -42,7 +42,7 @@ def _iter_file(src_file, close=False):
             src_file.close()
 
 
-class TableRow(dict):
+class Row(dict):
     """ Database row, represented as a Python `dict`.
 
     .. attribute:: id
@@ -59,6 +59,9 @@ class TableRow(dict):
     def save(self):
         """ Execute an `UPDATE` query for this row. """
         self._parent_table.save(self, _deprecation_warning=False)
+
+
+TableRow = Row
 
 
 class DbFile(object):
@@ -301,9 +304,11 @@ class Table(object):
         return self._session.sql
 
     def create_table(self):
+        """ Create the backend SQL table. """
         return self.sql.create_table(self._name)
 
     def drop_table(self):
+        """ Drop the backend SQL table. """
         return self.sql.drop_table(self._name)
 
     def _row(self, id=None, data={}):

@@ -16,7 +16,7 @@ API
 .. autoclass:: htables.Table
   :members:
 
-.. autoclass:: htables.TableRow
+.. autoclass:: htables.Row
   :members:
 
 .. autoclass:: htables.DbFile
