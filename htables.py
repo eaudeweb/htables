@@ -92,7 +92,12 @@ class DbFile(object):
 
 
 class PostgresqlDB(object):
-    """ A pool of reusable database connections that get created on demand. """
+    """
+    Session pool for a PostgreSQL database. Expects a connection string,
+    for example ``'postgresql://localhost/myproject'``.
+    If `debug` is True, a validation is performed on `row.save()`,
+    to make sure all keys and values are strings. `schema` is deprecated.
+    """
 
     def __init__(self, connection_uri, schema=None, debug=False):
         global psycopg2
@@ -548,7 +553,7 @@ class SqliteSession(Session):
 
 
 class SqliteDB(object):
-    """ SQLite database session pool; same api as :class:`PostgresqlDB` """
+    """ SQLite database session pool; same api as :class:`PostgresqlDB`. """
 
     def __init__(self, uri, schema=None):
         import sqlite3
