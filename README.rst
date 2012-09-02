@@ -47,5 +47,5 @@ Links
 * documentation_
 * `source code`_
 
-.. _documentation: http://eaudeweb.github.com/htables/
+.. _documentation: http://packages.python.org/htables/
 .. _source code: https://github.com/eaudeweb/htables/

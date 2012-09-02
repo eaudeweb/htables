@@ -10,7 +10,7 @@ summary = ("htables is a database library for storing mapping objects "
 
 distutils.core.setup(
     name='htables',
-    url='http://eaudeweb.github.com/htables/',
+    url='http://packages.python.org/htables/',
     description=summary,
     long_description=readme_rst,
     version='dev',
