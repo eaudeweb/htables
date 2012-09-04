@@ -42,6 +42,12 @@ class op(object):
         def __init__(self, pattern):
             self.pattern = pattern
 
+    class Reversed(object):
+        """ Order by a field, reversed """
+
+        def __init__(self, field):
+            self.field = field
+
 
 def _iter_file(src_file, close=False):
     try:
@@ -250,7 +256,17 @@ class PostgresqlDialect(object):
                     raise RuntimeError("Unknown operator %r" % value)
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
         if order_by is not None:
-            sql_query += " ORDER BY (data -> %s) " % self._quote(order_by)
+            reverse = False
+            if isinstance(order_by, basestring):
+                sort_key = self._quote(order_by)
+            elif isinstance(order_by, op.Reversed):
+                sort_key = self._quote(order_by.field)
+                reverse = True
+            else:
+                raise RuntimeError("Unknown operator %r" % order_by)
+            sql_query += " ORDER BY (data -> %s)" % sort_key
+            if reverse:
+                sql_query += " DESC"
         if offset != 0:
             sql_query += " OFFSET %d" % offset
         if limit is not None:
@@ -328,7 +344,15 @@ class SqliteDialect(object):
         cursor = self.execute("SELECT id, data FROM " + name)
         results = self._clip_results(cursor, where)
         if order_by:
-            results = sorted(list(results), key=lambda r: r[1].get(order_by))
+            reverse = False
+            if isinstance(order_by, basestring):
+                sort_key = lambda r: r[1].get(order_by)
+            elif isinstance(order_by, op.Reversed):
+                sort_key = lambda r: r[1].get(order_by.field)
+                reverse = True
+            else:
+                raise RuntimeError("Unknown operator %r" % order_by)
+            results = sorted(list(results), key=sort_key, reverse=reverse)
         if offset or limit:
             end = None if limit is None else offset + limit
             results = list(results)[offset:end]

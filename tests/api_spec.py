@@ -426,6 +426,17 @@ class _HTablesQueryApiTest(TestCase):
         self.assertEqual([row['name'] for row in results],
                          ['row-4', 'row-3', 'row-2', 'row-1'])
 
+    def test_order_by_string_reversed(self):
+        from htables import op
+        table = self.session['person']
+        table.new(name="row-1", letter='d')
+        table.new(name="row-2", letter='c')
+        table.new(name="row-3", letter='b')
+        table.new(name="row-4", letter='a')
+        results = list(table.query(order_by=op.Reversed('letter')))
+        self.assertEqual([row['name'] for row in results],
+                         ['row-1', 'row-2', 'row-3', 'row-4'])
+
     def test_count_with_no_filter_returns_4(self):
         table = self.session['person']
         for c in range(4):
