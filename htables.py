@@ -672,7 +672,7 @@ class SqliteDB(object):
         if uri == ':memory:':
             _single_connection = self._connect()
             self._connect = lambda: _single_connection
-            self.put_session = lambda session: None
+            self.put_session = lambda session: session.rollback()
             self._files = {}
         else:
             self._files = None
@@ -684,6 +684,7 @@ class SqliteDB(object):
         return SqliteSession(self.schema, self._connect(), self._files)
 
     def put_session(self, session):
+        session.rollback()
         session._release_conn().close()
 
     @contextmanager

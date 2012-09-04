@@ -372,6 +372,30 @@ class _HTablesApiTest(TestCase):
             with self.expect_one_warning():
                 session.table(PersonRow)
 
+    def test_ending_session_with_no_commit_does_not_save_changes(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(a="b")
+        with self.db_session() as session:
+            self.assertEqual(list(session['person'].find()), [])
+
+    def test_rollback_before_commit_does_not_save_changes(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(a="b")
+            session.rollback()
+            session.commit()
+        with self.db_session() as session:
+            self.assertEqual(list(session['person'].find()), [])
+
+    def test_commit_before_ending_session_saves_changes(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(a="b")
+            session.commit()
+        with self.db_session() as session:
+            self.assertEqual(list(session['person'].find()), [{'a': "b"}])
+
 
 class _HTablesQueryApiTest(TestCase):
 
