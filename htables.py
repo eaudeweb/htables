@@ -467,7 +467,6 @@ class Table(object):
                                   offset, limit, count)
         if count:
             results = list(results)
-            print results
             [(num_rows,)] = list(results)
             return num_rows
         else:
