@@ -1,6 +1,7 @@
 from __future__ import with_statement
 from contextlib import contextmanager
 import sqlite3
+import tempfile
 import simplejson as json
 from common import TestCase
 import api_spec
@@ -19,6 +20,42 @@ class SqliteApiTest(api_spec._HTablesApiTest):
 
     def create_db(self):
         import htables
+        temp_db = tempfile.NamedTemporaryFile()
+        self.addCleanup(temp_db.close)
+        return htables.SqliteDB(temp_db.name)
+
+    def _unpack_data(self, value):
+        return json.loads(value)
+
+    def _count_large_files(self, session):
+        return len(self.db._files)
+
+    def test_large_file_error(self):
+        from nose import SkipTest
+        raise SkipTest
+
+    def test_large_file(self):
+        from nose import SkipTest
+        raise SkipTest
+
+    def test_remove_large_file(self):
+        from nose import SkipTest
+        raise SkipTest
+
+
+class SqliteQueryApiTest(api_spec._HTablesQueryApiTest):
+
+    def create_db(self):
+        import htables
+        temp_db = tempfile.NamedTemporaryFile()
+        self.addCleanup(temp_db.close)
+        return htables.SqliteDB(temp_db.name)
+
+
+class SqliteApiMemoryTest(api_spec._HTablesApiTest):
+
+    def create_db(self):
+        import htables
         return htables.SqliteDB(':memory:')
 
     def _unpack_data(self, value):
@@ -32,7 +69,7 @@ class SqliteApiTest(api_spec._HTablesApiTest):
         raise SkipTest
 
 
-class SqliteQueryApiTest(api_spec._HTablesQueryApiTest):
+class SqliteQueryApiMemoryTest(api_spec._HTablesQueryApiTest):
 
     def create_db(self):
         import htables
