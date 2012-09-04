@@ -2,13 +2,20 @@ from __future__ import with_statement
 import unittest2 as unittest
 from contextlib import contextmanager
 from mock import Mock, call
-from api_spec import _HTablesApiTest
+import api_spec
 
 
 CONNECTION_URI = 'postgresql://localhost/htables_test'
 
 
-class PostgresqlTest(_HTablesApiTest):
+class PostgresqlApiTest(api_spec._HTablesApiTest):
+
+    def create_db(self):
+        import htables
+        return htables.PostgresqlDB(CONNECTION_URI, debug=True)
+
+
+class PostgresqQueryApiTest(api_spec._HTablesQueryApiTest):
 
     def create_db(self):
         import htables

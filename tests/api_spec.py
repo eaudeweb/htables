@@ -199,6 +199,23 @@ class _HTablesApiTest(TestCase):
             row1 = table.get(1)
             self.assertEqual(list(table.find(color='red')), [row1])
 
+    def test_find_with_two_filters(self):
+        with self.db_session() as session:
+            table = session['person']
+            table.new(name='one', color='red')
+            table.new(name='two', color='red')
+            table.new(name='two', color='blue')
+            row2 = table.get(2)
+            self.assertEqual(list(table.find(name='two', color='red')), [row2])
+
+    def test_filter_with_funny_characters(self):
+        with self.db_session() as session:
+            table = session['person']
+            name = 'adsfasdf!@#$%^&*()-=\\/"\'][{}><.,?`~ \n\t\fadsfasdf'
+            table.new(name=name)
+            row1 = table.get(1)
+            self.assertEqual(list(table.find(name=name)), [row1])
+
     def test_find_first(self):
         with self.db_session() as session:
             table = session['person']
@@ -354,3 +371,101 @@ class _HTablesApiTest(TestCase):
         with self.db_session() as session:
             with self.expect_one_warning():
                 session.table(PersonRow)
+
+
+class _HTablesQueryApiTest(TestCase):
+
+    def preSetUp(self):
+        super(_HTablesQueryApiTest, self).preSetUp()
+        import htables
+        self.db = self.create_db()
+        with self.db.session() as session:
+            session['person'].create_table()
+            session.commit()
+
+        self.session = self.db.get_session()
+
+        def cleanup():
+            self.db.put_session(self.session)
+            with self.db.session() as session:
+                session['person'].drop_table()
+                session.delete_all_blobs()
+                session.commit()
+
+        self.addCleanup(cleanup)
+
+    def test_query_with_limit_2_returns_first_2_results(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c)
+        results = list(table.query(limit=2))
+        self.assertEqual(results, [{'name': "row-0"}, {'name': "row-1"}])
+
+    def test_query_with_offset_2_and_no_limit_returns_last_2_results(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c)
+        results = list(table.query(offset=2))
+        self.assertEqual(results, [{'name': "row-2"}, {'name': "row-3"}])
+
+    def test_query_with_limit_1_and_filtering_returns_first_match(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="odd" if c%2 else "even")
+        results = list(table.query(limit=1, where={'parity': "odd"}))
+        self.assertEqual(results, [{'name': "row-1", 'parity': "odd"}])
+
+    def test_order_by_string(self):
+        table = self.session['person']
+        table.new(name="row-1", letter='d')
+        table.new(name="row-2", letter='c')
+        table.new(name="row-3", letter='b')
+        table.new(name="row-4", letter='a')
+        results = list(table.query(order_by='letter'))
+        self.assertEqual([row['name'] for row in results],
+                         ['row-4', 'row-3', 'row-2', 'row-1'])
+
+    def test_order_by_string_reversed(self):
+        from htables import op
+        table = self.session['person']
+        table.new(name="row-1", letter='d')
+        table.new(name="row-2", letter='c')
+        table.new(name="row-3", letter='b')
+        table.new(name="row-4", letter='a')
+        results = list(table.query(order_by=op.Reversed('letter')))
+        self.assertEqual([row['name'] for row in results],
+                         ['row-1', 'row-2', 'row-3', 'row-4'])
+
+    def test_count_with_no_filter_returns_4(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c)
+        results = table.query(count=True)
+        self.assertEqual(results, 4)
+
+    def test_count_with_filter_returns_2(self):
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="odd" if c%2 else "even")
+        results = table.query(where={'parity': "odd"}, count=True)
+        self.assertEqual(results, 2)
+
+    def test_query_with_generic_regexp_returns_all(self):
+        from htables import op
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="apple" if c%2 else "apples")
+        results = table.query(where={'parity': op.RE('^ap')}, count=True)
+        self.assertEqual(results, 4)
+
+    def test_query_with_specific_regexp_returns_2(self):
+        from htables import op
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c,
+                      parity="apple" if c%2 else "apples")
+        results = table.query(where={'parity': op.RE('le$')}, count=True)
+        self.assertEqual(results, 2)

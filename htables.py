@@ -7,6 +7,9 @@ import StringIO
 import warnings
 import re
 from contextlib import contextmanager
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class BlobsNotSupported(Exception):
@@ -28,6 +31,22 @@ class MissingTable(RuntimeError):
 
 
 COPY_BUFFER_SIZE = 2 ** 14
+
+
+class op(object):
+    """ Container for `where` operators """
+
+    class RE(object):
+        """ Match a regular expression """
+
+        def __init__(self, pattern):
+            self.pattern = pattern
+
+    class Reversed(object):
+        """ Order by a field, reversed """
+
+        def __init__(self, field):
+            self.field = field
 
 
 def _iter_file(src_file, close=False):
@@ -185,6 +204,7 @@ class PostgresqlDialect(object):
 
     def execute(self, *args, **kwargs):
         cursor = kwargs.get('cursor') or self.conn.cursor()
+        log.debug('PostgreSQL query: %r', args)
         try:
             cursor.execute(*args)
         except Exception, e:
@@ -221,8 +241,45 @@ class PostgresqlDialect(object):
                               (obj_id,))
         return list(cursor)
 
-    def select_all(self, name):
-        return self.execute("SELECT id, data FROM " + name)
+    def _quote(self, string):
+        return "'%s'" % string.replace("'", "''")
+
+    def select(self, name, where, order_by, offset, limit, count):
+        if count:
+            sql_query = "SELECT COUNT(*)"
+        else:
+            sql_query = "SELECT id, data"
+        sql_query += " FROM " + name
+        if where:
+            conditions = []
+            for key, value in where.iteritems():
+                if isinstance(value, basestring):
+                    conditions.append("data -> %s = %s" %
+                                      (self._quote(key), self._quote(value)))
+                elif isinstance(value, op.RE):
+                    conditions.append("data -> %s ~ %s" %
+                                      (self._quote(key),
+                                       self._quote(value.pattern)))
+                else:
+                    raise RuntimeError("Unknown operator %r" % value)
+            sql_query += " WHERE (%s)" % ' AND '.join(conditions)
+        if order_by is not None:
+            reverse = False
+            if isinstance(order_by, basestring):
+                sort_key = self._quote(order_by)
+            elif isinstance(order_by, op.Reversed):
+                sort_key = self._quote(order_by.field)
+                reverse = True
+            else:
+                raise RuntimeError("Unknown operator %r" % order_by)
+            sql_query += " ORDER BY (data -> %s)" % sort_key
+            if reverse:
+                sql_query += " DESC"
+        if offset != 0:
+            sql_query += " OFFSET %d" % offset
+        if limit is not None:
+            sql_query += " LIMIT %d" % limit
+        return self.execute(sql_query)
 
     def update(self, name, obj_id, obj):
         self.execute("UPDATE " + name + " SET data = %s WHERE id = %s",
@@ -241,6 +298,7 @@ class SqliteDialect(object):
 
     def execute(self, *args):
         cursor = self.conn.cursor()
+        log.debug('SQLite query: %r', args)
         try:
             cursor.execute(*args)
         except Exception, e:
@@ -268,9 +326,48 @@ class SqliteDialect(object):
                                (obj_id,))
         return [(json.loads(r[0]),) for r in cursor]
 
-    def select_all(self, name):
+    def _clip_results(self, cursor, where):
+        def eq_matcher(key, value):
+            return lambda data: data.get(key) == value
+
+        def re_matcher(key, pattern):
+            compiled = re.compile(pattern)
+            return lambda data: compiled.search(data.get(key, '')) is not None
+
+        matchers = []
+        for key, value in where.iteritems():
+            if isinstance(value, basestring):
+                matchers.append(eq_matcher(key, value))
+            elif isinstance(value, op.RE):
+                matchers.append(re_matcher(key, value.pattern))
+            else:
+                raise RuntimeError("Unknown operator %r" % value)
+
+        for (id, data_json) in cursor:
+            data = json.loads(data_json)
+            if all(m(data) for m in matchers):
+                yield (id, data)
+
+    def select(self, name, where, order_by, offset, limit, count):
         cursor = self.execute("SELECT id, data FROM " + name)
-        return ((id, json.loads(data)) for (id, data) in cursor)
+        results = self._clip_results(cursor, where)
+        if order_by:
+            reverse = False
+            if isinstance(order_by, basestring):
+                sort_key = lambda r: r[1].get(order_by)
+            elif isinstance(order_by, op.Reversed):
+                sort_key = lambda r: r[1].get(order_by.field)
+                reverse = True
+            else:
+                raise RuntimeError("Unknown operator %r" % order_by)
+            results = sorted(list(results), key=sort_key, reverse=reverse)
+        if offset or limit:
+            end = None if limit is None else offset + limit
+            results = list(results)[offset:end]
+        if count:
+            num_rows = len(list(results))
+            results = [(num_rows,)]
+        return iter(results)
 
     def insert(self, name, obj):
         cursor = self.execute("INSERT INTO " + name +
@@ -362,14 +459,24 @@ class Table(object):
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return self.find()
 
+    def query(self, where={}, order_by=None,
+              offset=0, limit=None, count=False):
+        """ Same as :meth:`find` but results are clipped with `offset` and
+        `limit`. """
+        results = self.sql.select(self._name, where, order_by,
+                                  offset, limit, count)
+        if count:
+            results = list(results)
+            print results
+            [(num_rows,)] = list(results)
+            return num_rows
+        else:
+            return (self._row(id_, data) for id_, data in results)
+
     def find(self, **kwargs):
         """ Returns an iterator over all matching :class:`TableRow`
         objects. """
-
-        for ob_id, ob_data in self.sql.select_all(self._name):
-            row = self._row(ob_id, ob_data)
-            if all(row.get(k) == kwargs[k] for k in kwargs):
-                yield row
+        return self.query(where=kwargs)
 
     def find_first(self, **kwargs):
         """ Shorthand for calling :meth:`find` and getting the first result.
