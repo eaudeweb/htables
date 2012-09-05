@@ -1,4 +1,4 @@
-dev (unreleased)
+0.5 (2012-09-05)
 ----------------
 * Move filtering functionality to SQL for the PostgreSQL backend.
 * Additional query arguments: order_by, offset, limit.
