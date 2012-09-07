@@ -330,8 +330,8 @@ class SqliteDialect(object):
         def eq_matcher(key, value):
             return lambda data: data.get(key) == value
 
-        def re_matcher(key, pattern):
-            compiled = re.compile(pattern)
+        def re_matcher(key, value):
+            compiled = re.compile(value.pattern)
             return lambda data: compiled.search(data.get(key, '')) is not None
 
         matchers = []
@@ -339,7 +339,7 @@ class SqliteDialect(object):
             if isinstance(value, basestring):
                 matchers.append(eq_matcher(key, value))
             elif isinstance(value, op.RE):
-                matchers.append(re_matcher(key, value.pattern))
+                matchers.append(re_matcher(key, value))
             else:
                 raise RuntimeError("Unknown operator %r" % value)
 
