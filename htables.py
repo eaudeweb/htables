@@ -61,6 +61,10 @@ def _iter_file(src_file, close=False):
             src_file.close()
 
 
+def _postgresql_quote(string):
+    return "'%s'" % string.replace("'", "''")
+
+
 class Row(dict):
     """ Database row, represented as a Python `dict`.
 
@@ -241,9 +245,6 @@ class PostgresqlDialect(object):
                               (obj_id,))
         return list(cursor)
 
-    def _quote(self, string):
-        return "'%s'" % string.replace("'", "''")
-
     def select(self, name, where, order_by, offset, limit, count):
         if count:
             sql_query = "SELECT COUNT(*)"
@@ -255,20 +256,21 @@ class PostgresqlDialect(object):
             for key, value in where.iteritems():
                 if isinstance(value, basestring):
                     conditions.append("data -> %s = %s" %
-                                      (self._quote(key), self._quote(value)))
+                                      (_postgresql_quote(key),
+                                       _postgresql_quote(value)))
                 elif isinstance(value, op.RE):
                     conditions.append("data -> %s ~ %s" %
-                                      (self._quote(key),
-                                       self._quote(value.pattern)))
+                                      (_postgresql_quote(key),
+                                       _postgresql_quote(value.pattern)))
                 else:
                     raise RuntimeError("Unknown operator %r" % value)
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
         if order_by is not None:
             reverse = False
             if isinstance(order_by, basestring):
-                sort_key = self._quote(order_by)
+                sort_key = _postgresql_quote(order_by)
             elif isinstance(order_by, op.Reversed):
-                sort_key = self._quote(order_by.field)
+                sort_key = _postgresql_quote(order_by.field)
                 reverse = True
             else:
                 raise RuntimeError("Unknown operator %r" % order_by)
