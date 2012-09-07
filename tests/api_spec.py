@@ -493,3 +493,25 @@ class _HTablesQueryApiTest(TestCase):
                       parity="apple" if c%2 else "apples")
         results = table.query(where={'parity': op.RE('le$')}, count=True)
         self.assertEqual(results, 2)
+
+    def test_query_with_custom_operator_returns_2_items(self):
+        from htables import op, _postgresql_quote
+        table = self.session['person']
+        for c in range(4):
+            table.new(name="row-%d" % c)
+
+        class ValueInList(op.SQL):
+
+            def __init__(self, values):
+                self.values = values
+
+            def sqlite(self, key):
+                return lambda data: data.get(key, '') in self.values
+
+            def postgresql(self, key):
+                vallist = ', '.join(_postgresql_quote(v) for v in self.values)
+                return "data -> %s IN (%s)" % (_postgresql_quote(key), vallist)
+
+        in_list = ValueInList(['row-1', 'row-2'])
+        results = table.query(where={'name': in_list}, count=True)
+        self.assertEqual(results, 2)

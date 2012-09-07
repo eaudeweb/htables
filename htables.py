@@ -48,6 +48,12 @@ class op(object):
         def __init__(self, field):
             self.field = field
 
+    class SQL(object):
+        """ Custom SQL expression """
+
+        def __init__(self, **by_dialect):
+            self.__dict__.update(by_dialect)
+
 
 def _iter_file(src_file, close=False):
     try:
@@ -262,6 +268,8 @@ class PostgresqlDialect(object):
                     conditions.append("data -> %s ~ %s" %
                                       (_postgresql_quote(key),
                                        _postgresql_quote(value.pattern)))
+                elif isinstance(value, op.SQL):
+                    conditions.append(value.postgresql(key))
                 else:
                     raise RuntimeError("Unknown operator %r" % value)
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
@@ -342,6 +350,8 @@ class SqliteDialect(object):
                 matchers.append(eq_matcher(key, value))
             elif isinstance(value, op.RE):
                 matchers.append(re_matcher(key, value))
+            elif isinstance(value, op.SQL):
+                matchers.append(value.sqlite(key))
             else:
                 raise RuntimeError("Unknown operator %r" % value)
 
