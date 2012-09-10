@@ -1,3 +1,7 @@
+0.5.1 (2012-09-10)
+------------------
+* Allow custom SQL query expression.
+
 0.5 (2012-09-05)
 ----------------
 * Move filtering functionality to SQL for the PostgreSQL backend.
