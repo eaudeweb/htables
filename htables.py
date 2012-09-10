@@ -6,10 +6,24 @@ import random
 import StringIO
 import warnings
 import re
+import os.path
 from contextlib import contextmanager
 import logging
 
 log = logging.getLogger(__name__)
+
+
+def _get_version():
+    _repo_path = os.path.dirname(__file__)
+    if os.path.exists(os.path.join(_repo_path, '.git')):
+        from subprocess import Popen, PIPE
+        p = Popen(['git', 'describe', '--tags'],
+                  cwd=_repo_path, stdout=PIPE, stderr=PIPE)
+        return p.communicate()[0].strip().lstrip('v')
+    else:
+        return '0.5.1'
+
+__version__ = _get_version()
 
 
 class BlobsNotSupported(Exception):

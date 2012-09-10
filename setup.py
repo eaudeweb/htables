@@ -8,12 +8,18 @@ f.close()
 summary = ("htables is a database library for storing mapping objects "
            "in a relational database.")
 
+try:
+    from htables import __version__
+except ImportError:
+    __version__ == 'dev'
+
+
 distutils.core.setup(
     name='htables',
     url='http://packages.python.org/htables/',
     description=summary,
     long_description=readme_rst,
-    version='0.5.1',
+    version=__version__,
     author='Eau de Web',
     author_email='office@eaudeweb.ro',
     py_modules=['htables'],
