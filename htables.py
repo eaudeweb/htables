@@ -48,6 +48,12 @@ class op(object):
         def __init__(self, field):
             self.field = field
 
+    class SQL(object):
+        """ Custom SQL expression """
+
+        def __init__(self, **by_dialect):
+            self.__dict__.update(by_dialect)
+
 
 def _iter_file(src_file, close=False):
     try:
@@ -59,6 +65,10 @@ def _iter_file(src_file, close=False):
     finally:
         if close:
             src_file.close()
+
+
+def _postgresql_quote(string):
+    return "'%s'" % string.replace("'", "''")
 
 
 class Row(dict):
@@ -241,9 +251,6 @@ class PostgresqlDialect(object):
                               (obj_id,))
         return list(cursor)
 
-    def _quote(self, string):
-        return "'%s'" % string.replace("'", "''")
-
     def select(self, name, where, order_by, offset, limit, count):
         if count:
             sql_query = "SELECT COUNT(*)"
@@ -255,20 +262,23 @@ class PostgresqlDialect(object):
             for key, value in where.iteritems():
                 if isinstance(value, basestring):
                     conditions.append("data -> %s = %s" %
-                                      (self._quote(key), self._quote(value)))
+                                      (_postgresql_quote(key),
+                                       _postgresql_quote(value)))
                 elif isinstance(value, op.RE):
                     conditions.append("data -> %s ~ %s" %
-                                      (self._quote(key),
-                                       self._quote(value.pattern)))
+                                      (_postgresql_quote(key),
+                                       _postgresql_quote(value.pattern)))
+                elif isinstance(value, op.SQL):
+                    conditions.append(value.postgresql(key))
                 else:
                     raise RuntimeError("Unknown operator %r" % value)
             sql_query += " WHERE (%s)" % ' AND '.join(conditions)
         if order_by is not None:
             reverse = False
             if isinstance(order_by, basestring):
-                sort_key = self._quote(order_by)
+                sort_key = _postgresql_quote(order_by)
             elif isinstance(order_by, op.Reversed):
-                sort_key = self._quote(order_by.field)
+                sort_key = _postgresql_quote(order_by.field)
                 reverse = True
             else:
                 raise RuntimeError("Unknown operator %r" % order_by)
@@ -330,8 +340,8 @@ class SqliteDialect(object):
         def eq_matcher(key, value):
             return lambda data: data.get(key) == value
 
-        def re_matcher(key, pattern):
-            compiled = re.compile(pattern)
+        def re_matcher(key, value):
+            compiled = re.compile(value.pattern)
             return lambda data: compiled.search(data.get(key, '')) is not None
 
         matchers = []
@@ -339,7 +349,9 @@ class SqliteDialect(object):
             if isinstance(value, basestring):
                 matchers.append(eq_matcher(key, value))
             elif isinstance(value, op.RE):
-                matchers.append(re_matcher(key, value.pattern))
+                matchers.append(re_matcher(key, value))
+            elif isinstance(value, op.SQL):
+                matchers.append(value.sqlite(key))
             else:
                 raise RuntimeError("Unknown operator %r" % value)
 
